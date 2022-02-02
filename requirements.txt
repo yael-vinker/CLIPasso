@@ -18,7 +18,6 @@ cffi==1.14.6
 chardet==4.0.0
 charset-normalizer==2.0.0
 click==8.0.1
-clip==1.0
 cloudpickle==1.6.0
 coloredlogs==15.0.1
 configparser==5.0.2
