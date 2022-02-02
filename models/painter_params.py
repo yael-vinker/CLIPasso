@@ -267,8 +267,7 @@ class Painter(torch.nn.Module):
             # attn_map = interpret(self.image_input_attn_clip, text_input, model, device=self.device, index=0).astype(np.float32)
             attn_map = interpret(self.image_input_attn_clip, text_input, model, device=self.device)
             
-        del model 
-        print("attn_map", attn_map.shape)
+        del model
         return attn_map
 
     def set_attention_map(self):
@@ -297,7 +296,6 @@ class Painter(torch.nn.Module):
         k = self.num_stages * self.num_paths
         self.inds = np.random.choice(range(attn_map.flatten().shape[0]), size=k, replace=False, p=attn_map_soft.flatten())
         self.inds = np.array(np.unravel_index(self.inds, attn_map.shape)).T
-        print("self.inds",self.inds.shape)
     
         self.inds_normalised = np.zeros(self.inds.shape)
         self.inds_normalised[:, 0] =  self.inds[:, 1] / self.canvas_width

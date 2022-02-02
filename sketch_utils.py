@@ -14,7 +14,6 @@ from torchvision.utils import make_grid
 import matplotlib.pyplot as plt
 import clip
 import pandas as pd
-from sklearn.decomposition import PCA
 import imageio
 import PIL
 from U2Net_.model import U2NET
@@ -351,57 +350,6 @@ def plot_atten(attn, threshold_map, inputs, inds, use_wandb, output_path, salien
         plot_attn_dino(attn, threshold_map, inputs, inds, use_wandb, output_path)
     elif saliency_model == "clip":
         plot_attn_clip(attn, threshold_map, inputs, inds, use_wandb, output_path)
-    
-
-
-def get_pca(args):
-    # load sketchy database dataset
-    category, images_path, labels, names_per_class = load_pca_data("sketchy_database", num_images_per_class=100)
-    num_images = len(images_path)
-    print("Loaded [{}] files from [{}] classes".format(num_images, num_classes))
-
-    # get clip features for chosen images
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model, preprocess = clip.load("ViT-B/32", device=device)
-    model = model.eval()
-
-    images_features = []
-    counter = 0
-    for i in range(0, num_images // 4 * 4, 4):
-        images_preprocess = [preprocess(Image.open(images_path[j]).convert("RGB")) for j in range(i, i + 4)]
-        batch_preprocessed = torch.tensor(np.stack(images_preprocess)).to(device)
-        with torch.no_grad():
-            cur_features = model.encode_image(batch_preprocessed).float()
-            images_features.append(cur_features / cur_features.max())
-        counter += 4
-
-    images_features = torch.cat(images_features)
-
-    # Create the dataframe object for PCA and tNSE
-    feat_cols = [ str(i) for i in range(images_features.shape[1]) ]
-    df = pd.DataFrame(images_features.cpu().numpy(), columns=feat_cols)
-
-    df['labels'] = pd.DataFrame(labels)
-    df['category'] = pd.DataFrame(category)
-    df['file_path'] = pd.DataFrame(images_path)
-    im_names = np.concatenate([names_per_class[c] for c in classes])
-    df['images_id'] = pd.DataFrame(np.concatenate([im_names, im_names]))
-
-    print('Size of the dataframe: {}'.format(df.shape))
-
-    # correlations stats
-    chosen_cols = feat_cols
-
-    # Preform PCA
-    pca = PCA(n_components=args.pca_n_components)
-    pca_fit = pca.fit(df[chosen_cols].values)
-    pca_result = pca_fit.transform(df[chosen_cols].values)
-    mu = np.mean(df[chosen_cols].values, axis=0)
-
-    print('Explained variation per principal component: {}'.format(pca_fit.explained_variance_ratio_))
-
-    return pca_fit, mu
-
 
 
 classes_to_folders_sketchcoco = {
@@ -449,59 +397,6 @@ def get_images_names(parent_path, classes_, folder_names, num_images_per_class, 
         names_per_class_[c] = images_names
     return names_per_class_
 
-
-def load_pca_data(dataset_name, num_images_per_class):
-    if dataset_name == "sketchy_coco":
-        sketchy_images_path = "/scratch/vinker/sketchycoco/Object/GT/train/"
-        names_per_class = get_images_names(sketchy_images_path, classes, list(classes_to_folders_sketchcoco.values()), num_images_per_class)
-        category_im, images_path_im, labels_im = get_files_path(sketchy_images_path, names_per_class, "im_", classes, 
-                                                                list(classes_to_folders_sketchcoco.values()), num_images_per_class)
-
-        sketchy_sketch_path = "/scratch/vinker/sketchycoco/Object/Sketch/train/"
-        category_sketch, images_path_sketch, labels_sketch = get_files_path(sketchy_sketch_path, names_per_class, "sketch_", classes, 
-                                                                            list(classes_to_folders_sketchcoco.values()), num_images_per_class)
-
-        category = category_im + category_sketch
-        images_path = images_path_im + images_path_sketch
-        labels = labels_im + labels_sketch
-
-        num_images = len(images_path)
-        print(images_path[0])
-        print("Loaded [{}] files from [{}] classes".format(num_images, num_classes))
-    
-    elif dataset_name == "sketchy_database":
-        tx_num = "tx_000100000000"
-        path_to_invalid = "/datasets/home/vinker/sketchy_database/info"
-        txt_names = ["invalid-ambiguous.txt", "invalid-error.txt", "invalid-context.txt", "invalid-pose.txt"]
-        invalid_arr = []
-        for f in txt_names:
-            text_file = open("{}/{}".format(path_to_invalid, f), "r")
-            invalid_arr.extend(text_file.readlines())
-
-        parent_path_images = "/datasets/home/vinker/sketchy_database/256x256/photo/{}/".format(tx_num)
-        names_per_class = get_images_names(parent_path_images, classes, classes, num_images_per_class, corrupted_files=invalid_arr)
-        category_im, images_path_im, labels_im = get_files_path(parent_path_images, names_per_class, "im_", classes, classes, num_images_per_class)
-
-        sketchy_sketch_path = "/datasets/home/vinker/sketchy_database/256x256/sketch/{}/".format(tx_num)
-        names_per_class_sketches = {}
-        for class_ in names_per_class.keys():
-            names_per_class_sketches[class_] = []
-            for filename in names_per_class[class_]:
-                new_file = "{}-{}.png".format(os.path.splitext(filename)[0], str(1), ".png")
-                if os.path.exists("{}/{}/{}".format(sketchy_sketch_path, class_, new_file)):
-                    names_per_class_sketches[class_].append(new_file)
-                else:
-                    print(new_file, "does not exists")
-                    names_per_class_sketches[class_].append(filename)
-        category_sketch, images_path_sketch, labels_sketch = get_files_path(sketchy_sketch_path, names_per_class_sketches, "sketch_", classes, classes, num_images_per_class)
-
-        category = category_im + category_sketch
-        images_path = images_path_im + images_path_sketch
-        labels = labels_im + labels_sketch
-    else:
-        print("invalid dataset name")
-        exit(1)
-    return category, images_path, labels, names_per_class   
 
 def fix_image_scale(im):
     im_np = np.array(im) / 255

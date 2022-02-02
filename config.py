@@ -23,19 +23,20 @@ def parse_arguments():
     # =================================
     parser.add_argument("target", help="target image path")
     parser.add_argument("--output_dir", type=str, help="directory to save the output images and loss")
+    parser.add_argument("--path_svg", type=str, default="none", 
+            help="if you want to load an svg file and train from it")
+    parser.add_argument("--use_gpu", type=int, default=0)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--mask_object", type=int, default=0)
+    parser.add_argument("--fix_scale", type=int, default=0)
+
+    # =================================
+    # ============ wandb ============
+    # =================================
     parser.add_argument("--use_wandb", type=int, default=0)
     parser.add_argument("--wandb_user", type=str, default="yael-vinker")
     parser.add_argument("--wandb_name", type=str, default="test")
     parser.add_argument("--wandb_project_name", type=str, default="none")
-    parser.add_argument("--path_svg", type=str, default="none", 
-            help="if you want to load an svg file and train from it")
-    parser.add_argument("--use_gpu", type=int, default=0)
-    parser.add_argument("--negative_path", type=str, default="none",
-            help="for triplet loss training, path to negative sample")
-    parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--mask_object", type=int, default=0)
-    parser.add_argument("--fix_scale", type=int, default=0)
-    
     
     # =================================
     # =========== training ============
@@ -50,7 +51,6 @@ def parse_arguments():
     parser.add_argument("--batch_size", type=int, default=1, help="for optimization it's only one image")
     parser.add_argument("--save_interval", type=int, default=10)
     parser.add_argument("--eval_interval", type=int, default=10)
-    parser.add_argument("--initial_scale", type=int, default=224)
     parser.add_argument("--image_scale", type=int, default=224)    
     
     # =================================
@@ -68,8 +68,6 @@ def parse_arguments():
     parser.add_argument("--xdog_intersec", type=int, default=1)
     parser.add_argument("--mask_object_attention", type=int, default=0)
     parser.add_argument("--softmax_temp", type=float, default=0.3)
-    
-    
 
     # =================================
     # ============= loss ==============
@@ -89,12 +87,6 @@ def parse_arguments():
     parser.add_argument("--aug_scale_min", type=float, default=0.7)
     parser.add_argument("--force_sparse", type=float, default=0,
             help="if True, use L1 regularization on stroke's opacity to encourage small number of strokes")
-    parser.add_argument("--binary_loss", type=float, default=0)
-    parser.add_argument("--triplet_loss", type=float, default=0)
-    parser.add_argument("--neg_clip", type=float, default=0)
-    parser.add_argument("--pca_clip", type=float, default=0)
-    parser.add_argument("--pca_n_components", type=int, default=50)
-    parser.add_argument("--pca_cut_index", type=int, default=0)
     parser.add_argument("--clip_conv_loss", type=float, default=1)
     parser.add_argument("--clip_conv_loss_type", type=str, default="L2")
     parser.add_argument("--clip_conv_layer_weights", type=str, default="0,0,1.0,1.0,0")
@@ -108,15 +100,6 @@ def parse_arguments():
     set_seed(args.seed)
     
     args.clip_conv_layer_weights = [float(item) for item in args.clip_conv_layer_weights.split(',')]
-    args.beta1 = 0.5
-    args.beta2 = 0.9
-    args.lr_decay=0.9999
-
-    args.gamma = 1.0
-    args.BASE_LR = args.lr
-    args.COSINE_END_LR = 0.5
-    args.WARMUP_EPOCHS = 100
-    args.WARMUP_START_LR = 0.1
 
     args.output_dir = os.path.join(args.output_dir, args.wandb_name)
     if not os.path.exists(args.output_dir):

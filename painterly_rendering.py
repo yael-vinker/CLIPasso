@@ -1,11 +1,3 @@
-"""
-Scream: python painterly_rendering.py imgs/scream.jpg --num_paths 2048 --max_width 4.0
-Fallingwater: python painterly_rendering.py imgs/fallingwater.jpg --num_paths 2048 --max_width 4.0
-Fallingwater: python painterly_rendering.py imgs/fallingwater.jpg --num_paths 2048 --max_width 4.0 --use_lpips_loss
-Baboon: python painterly_rendering.py imgs/baboon.png --num_paths 1024 --max_width 4.0 --num_iter 250
-Baboon Lpips: python painterly_rendering.py imgs/baboon.png --num_paths 1024 --max_width 4.0 --num_iter 500 --use_lpips_loss
-Kitty: python painterly_rendering.py imgs/kitty.jpg --num_paths 1024 --use_blob
-"""
 from tqdm import tqdm
 from torchvision import transforms, models
 
@@ -24,7 +16,6 @@ import numpy as np
 from torch.cuda.amp import autocast
 from PIL import Image
 from loss import Loss
-from models import gen_models
 from models.painter_params import Painter, PainterOptimizer
 import sys 
 import PIL
@@ -45,7 +36,7 @@ def get_target(args):
     target = Image.open(args.target)
     if target.mode == "RGBA":
         new_image = Image.new("RGBA", target.size, "WHITE")  # Create a white rgba background
-        new_image.paste(target, (0, 0), target)  # Paste the image on the background. Go to the links given below for details.
+        new_image.paste(target, (0, 0), target)  # Paste the image on the background.
         target = new_image
     target = target.convert("RGB")
     masked_im, mask = utils.get_mask_u2net(args, target)
@@ -162,6 +153,7 @@ def main(args):
             utils.log_sketch_summary_final(path_svg, args.use_wandb, args.device, best_iter, best_loss, "best total")
             
             return configs_to_save
+
 
 if __name__ == "__main__":
     args = config.parse_arguments()

@@ -30,11 +30,6 @@ class Loss(nn.Module):
         self.clip_weight = args.clip_weight
         self.start_clip = args.start_clip
 
-        self.force_sparse = args.force_sparse
-        self.binary_loss = args.binary_loss
-        self.triplet_loss = args.triplet_loss
-        self.neg_clip = args.neg_clip
-        self.pca_clip = args.pca_clip
         self.clip_conv_loss = args.clip_conv_loss
         self.clip_fc_loss_weight = args.clip_fc_loss_weight
         self.clip_text_guide = args.clip_text_guide
@@ -46,16 +41,10 @@ class Loss(nn.Module):
                 "l2": L2_(),
                 "lpips": LPIPS(device=args.device).to(args.device),
                 "clip": CLIPLoss(args),
-                "sparse": SparseLoss(),
-                "binary": BinaryOpacityLoss(),
-                "triplet": TripletLoss(args),
-                "neg_clip": NegClipLoss(args),
             }
 
         if self.clip_text_guide:
             self.loss_mapper["clip_text"] = CLIPTextLoss(args)
-        if self.pca_clip:
-            self.loss_mapper["pca_clip"] = PCA_CLIPLoss(args)
         if self.clip_conv_loss:
             self.loss_mapper["clip_conv_loss"] = CLIPConvLoss(args)
 
@@ -65,16 +54,6 @@ class Loss(nn.Module):
             losses_to_apply.append(self.percep_loss)
         if self.train_with_clip and self.start_clip == 0:
             losses_to_apply.append("clip")
-        if self.force_sparse:
-            losses_to_apply.append("sparse")
-        if self.binary_loss:
-            losses_to_apply.append("binary")
-        if self.triplet_loss:
-            losses_to_apply.append("triplet")
-        if self.neg_clip:
-            losses_to_apply.append("neg_clip")
-        if self.pca_clip:
-            losses_to_apply.append("pca_clip")
         if self.clip_conv_loss:
             losses_to_apply.append("clip_conv_loss")
         if self.clip_text_guide:
@@ -94,17 +73,10 @@ class Loss(nn.Module):
         losses_dict = dict.fromkeys(self.losses_to_apply, torch.tensor([0.0]).to(self.args.device))
         loss_coeffs = dict.fromkeys(self.losses_to_apply, 1.0)
         loss_coeffs["clip"] = self.clip_weight
-        loss_coeffs["sparse"] = self.force_sparse
-        loss_coeffs["binary"] = self.binary_loss
-        loss_coeffs["triplet"] = self.triplet_loss
-        loss_coeffs["neg_clip"] = self.neg_clip
-        loss_coeffs["pca_clip"] = self.pca_clip
         loss_coeffs["clip_text"] = self.clip_text_guide
 
         for loss_name in self.losses_to_apply:
-            if loss_name in ["sparse", "binary"]:
-                losses_dict[loss_name] = self.loss_mapper[loss_name](color_parameters).mean()
-            elif loss_name in ["clip_conv_loss"]:
+            if loss_name in ["clip_conv_loss"]:
                 conv_loss = self.loss_mapper[loss_name](sketches, targets, mode)
                 for layer in conv_loss.keys():
                     losses_dict[layer] = conv_loss[layer]
@@ -429,273 +401,6 @@ class L2_(torch.nn.Module):
         # diffs = [diff.mean([1, 2]) for diff in diffs]
 
         return sum(diffs)
-
-
-class SparseLoss(torch.nn.Module):
-    def __init__(self):
-        super(SparseLoss, self).__init__()
-
-    def forward(self, color_params):
-        l1_norm = sum(p.abs().sum() for p in color_params)
-        return l1_norm
-
-
-class BinaryOpacityLoss(torch.nn.Module):
-    def __init__(self):
-        super(BinaryOpacityLoss, self).__init__()
-
-    def forward(self, color_params):
-        binary_loss = sum((x.abs().sum() * (1.0 - x.abs().sum())) ** 2 for x in color_params)
-        return binary_loss
-
-
-class TripletLoss(torch.nn.Module):
-    def __init__(self, args):
-        super(TripletLoss, self).__init__()
-        self.triplet_loss = torch.nn.TripletMarginWithDistanceLoss(
-            distance_function=lambda x, y: 1.0 - F.cosine_similarity(x, y), margin=0.5, swap=False, reduction='mean')
-        self.model, clip_preprocess = clip.load('ViT-B/32', args.device, jit=False)
-        self.model.eval()
-        self.preprocess = transforms.Compose([clip_preprocess.transforms[-1]])  # clip normalisation
-        self.device = args.device
-        self.negative_path = args.negative_path
-        self.calc_target = True
-        self.calc_neg = True
-
-    def get_negative_features(self):
-        data_transforms = transforms.Compose([
-            transforms.Resize(224),
-            transforms.Resize(224),
-            transforms.CenterCrop(224),
-            transforms.ToTensor()
-        ])
-        neg = Image.open(self.negative_path).convert("RGB")
-        self.neg = data_transforms(neg).unsqueeze(0)
-        neg = self.preprocess(self.neg).to(self.device)
-        negative_features = self.model.encode_image(neg).detach()
-        return negative_features
-
-    def get_neg(self):
-        if self.calc_neg:
-            self.negative_features = self.get_negative_features()
-            self.calc_neg = False
-        return self.neg
-
-    def forward(self, sketches, targets):
-        sketches = self.preprocess(sketches).to(self.device)
-        sketches_features = self.model.encode_image(sketches)
-
-        if self.calc_target:
-            targets = self.preprocess(targets).to(self.device)
-            self.targets_features = self.model.encode_image(targets).detach()
-            self.calc_target = False
-
-        if self.calc_neg:
-            self.negative_features = self.get_negative_features()
-            self.calc_neg = False
-
-        return self.triplet_loss(sketches_features, self.targets_features, self.negative_features)
-
-
-class NegClipLoss(torch.nn.Module):
-    def __init__(self, args):
-        super(NegClipLoss, self).__init__()
-        self.model, clip_preprocess = clip.load('ViT-B/32', args.device, jit=False)
-        self.model.eval()
-        self.preprocess = transforms.Compose([clip_preprocess.transforms[-1]])  # clip normalisation
-        self.device = args.device
-        self.NUM_AUGS = args.num_aug_clip
-        self.augment_trans = transforms.Compose([
-            transforms.RandomPerspective(fill=1, p=1, distortion_scale=0.5),
-            transforms.RandomResizedCrop(224, scale=(0.7, 0.9)),
-            transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
-        ])
-        self.negative_path = args.negative_path
-        self.calc_neg = True
-
-    def get_negative_features(self):
-        data_transforms = transforms.Compose([
-            transforms.Resize(224),
-            transforms.Resize(224),
-            transforms.CenterCrop(224),
-            transforms.ToTensor()
-        ])
-        neg = Image.open(self.negative_path).convert("RGB")
-        self.neg = data_transforms(neg).unsqueeze(0)
-        neg = self.preprocess(self.neg).to(self.device)
-        negative_features = self.model.encode_image(neg).detach()
-        return negative_features
-
-    def forward(self, sketches, targets):
-        # for regular clip distance
-        # sketches = self.preprocess(sketches).to(self.device)
-        # sketches_features = self.model.encode_image(sketches)
-        if self.calc_neg:
-            self.negative_features = self.get_negative_features()
-            self.calc_neg = False
-
-        loss_clip = 0
-        img_augs = []
-        for n in range(self.NUM_AUGS):
-            img_augs.append(self.augment_trans(sketches))
-        im_batch = torch.cat(img_augs)
-        image_features = self.model.encode_image(im_batch)
-        for n in range(self.NUM_AUGS):
-            loss_clip += torch.cosine_similarity(image_features[n:n + 1], self.negative_features, dim=1)
-        return 0.3 * max(torch.Tensor([0.0]).to(self.device), loss_clip - 0.1)
-        # return 1. - torch.cosine_similarity(sketches_features, self.targets_features)
-
-
-class PCA_CLIPLoss(torch.nn.Module):
-    def __init__(self, args):
-        super(PCA_CLIPLoss, self).__init__()
-
-        self.model, clip_preprocess = clip.load('ViT-B/32', args.device, jit=False)
-        self.model.eval()
-        self.preprocess = transforms.Compose([clip_preprocess.transforms[-1]])  # clip normalisation
-        self.device = args.device
-        self.NUM_AUGS = args.num_aug_clip
-        self.augment_trans = transforms.Compose([
-            transforms.RandomPerspective(fill=1, p=1.0, distortion_scale=0.5),
-            transforms.RandomResizedCrop(224, scale=(0.8, 0.8), ratio=(1.0, 1.0)),
-            transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
-        ])
-        self.calc_target = True
-        self.pca_fit, self.mu_data = sketch_utils.get_pca(args)
-        self.mu_data = torch.Tensor(self.mu_data).to(args.device)
-        self.pca_n_components = args.pca_n_components
-        self.pca_cut_index = args.pca_cut_index
-
-    def pca_transform(self, X):
-        X = X - self.mu_data
-        X_transformed = torch.mm(X, torch.Tensor(self.pca_fit.components_.T).to(self.device))
-        return X_transformed
-
-    def pca_inverse_transform(self, X_transformed):
-        X_transformed = torch.mm(X_transformed[:, self.pca_cut_index: self.pca_n_components],
-                                 torch.Tensor(
-                                     self.pca_fit.components_[self.pca_cut_index: self.pca_n_components, :]).to(
-                                     self.device))
-        X_transformed += self.mu_data
-        # X_transformed = X_transformed[:, self.pca_cut_index : self.pca_n_components]
-        return X_transformed
-
-    def forward(self, sketches, targets):
-        # for regular clip distance
-        # sketches = self.preprocess(sketches).to(self.device)
-        # sketches_features = self.model.encode_image(sketches)
-        if self.calc_target:
-            targets = self.preprocess(targets).to(self.device)
-            targets_features = self.model.encode_image(targets).detach()
-            targets_features = self.pca_transform(targets_features)
-            self.targets_features = self.pca_inverse_transform(targets_features)
-            self.calc_target = False
-
-        loss_clip = 0
-        sketches_aug = []
-        for n in range(self.NUM_AUGS):
-            sketches_aug.append(self.augment_trans(sketches))
-        sketches_aug_batch = torch.cat(sketches_aug)
-        sketches_features = self.model.encode_image(sketches_aug_batch)
-
-        sketches_features_pca = self.pca_transform(sketches_features)
-        sketches_features_pca_reduces = self.pca_inverse_transform(sketches_features_pca)
-
-        for n in range(self.NUM_AUGS):
-            loss_clip += (1. - torch.cosine_similarity(sketches_features_pca_reduces[n:n + 1], self.targets_features,
-                                                       dim=1))
-        return loss_clip
-        # return 1. - torch.cosine_similarity(sketches_features, self.targets_features)
-
-
-class CLIPAugment(torch.nn.Module):
-    @staticmethod
-    def synch_RandomPerspective(transform, imgs):
-        """
-        Parameters
-        ----------
-        transform: Torchvision RandomPerspective transform
-        imgs: list of Torch Tensor or PIL Image
-            Note that all the images should have the same size
-        """
-        fill = transform.fill
-        width, height = TF._get_image_size(imgs[0])
-        startpoints, endpoints = transform.get_params(width, height, transform.distortion_scale)
-
-        transformed_imgs = []
-        if torch.rand(1) < transform.p:
-            for img in imgs:
-                if isinstance(img, torch.Tensor):
-                    if isinstance(fill, (int, float)):
-                        fill = [float(fill)] * TF._get_image_num_channels(img)
-                    else:
-                        fill = [float(f) for f in fill]
-
-                transformed_img = TF.perspective(img, startpoints, endpoints, transform.interpolation, fill)
-                transformed_imgs.append(transformed_img)
-
-            return transformed_imgs
-
-        return imgs
-
-    @staticmethod
-    def synch_RandomResizedCrop(transform, imgs):
-        """
-        Parameters
-        ----------
-        transform: Torchvision RandomPerspective transform
-        imgs: list of Torch Tensor or PIL Image
-            Note that all the images should have the same size
-        """
-
-        i, j, h, w = transform.get_params(imgs[0], transform.scale, transform.ratio)
-        transformed_imgs = []
-        for img in imgs:
-            transformed_img = TF.resized_crop(img, i, j, h, w, transform.size, transform.interpolation)
-            transformed_imgs.append(transformed_img)
-
-        return transformed_imgs
-
-    @staticmethod
-    def synch_RandomAffine(transform, imgs):
-        """
-        Parameters
-        ----------
-        transform: Torchvision RandomPerspective transform
-        imgs: list of Torch Tensor or PIL Image
-            Note that all the images should have the same size
-        """
-
-        fill = transform.fill
-        img_size = TF._get_image_size(imgs[0])
-        ret = transform.get_params(transform.degrees, transform.translate, transform.scale, transform.shear, img_size)
-
-        transformed_imgs = []
-        for img in imgs:
-            if isinstance(img, torch.Tensor):
-                if isinstance(fill, (int, float)):
-                    fill = [float(fill)] * TF._get_image_num_channels(img)
-                else:
-                    fill = [float(f) for f in fill]
-
-            transformed_img = TF.affine(img, *ret, interpolation=transform.interpolation, fill=fill)
-            transformed_imgs.append(transformed_img)
-
-        return transformed_imgs
-
-    def __init__(self, args, img_size):
-        super(CLIPAugment, self).__init__()
-        self.mutual_aug_transforms = transforms.Compose([
-            transforms.RandomPerspective(fill=1, p=1, distortion_scale=0.5),
-            transforms.RandomResizedCrop(img_size[0], scale=(0.8, 0.8)),
-        ])
-
-    def forward(self, imgs):
-        for T in self.mutual_aug_transforms.transforms:
-            if isinstance(T, transforms.RandomPerspective):
-                imgs = self.synch_RandomPerspective(T, imgs)
-
-        return imgs
 
 
 class CLIPVisualEncoder(nn.Module):
