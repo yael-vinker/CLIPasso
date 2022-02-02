@@ -65,94 +65,89 @@ def main(args):
 
     optimizer = PainterOptimizer(args, renderer)
     counter = 0
-    start_stage = 0 # if you want to start the training from a specific stage
     configs_to_save = {"loss_eval": []}
     best_loss, best_fc_loss = 100, 100
     best_iter, best_iter_fc = 0, 0
     min_delta = 1e-5
     terminate = False
 
-    for stage in range(args.num_stages):
-        renderer.set_random_noise(0)
-        img = renderer.init_image(stage)
-        optimizer.init_optimizers()
+    renderer.set_random_noise(0)
+    img = renderer.init_image(stage=0)
+    optimizer.init_optimizers()
 
-        if stage >= start_stage:
-            for epoch in range(args.num_iter):
-                renderer.set_random_noise(epoch)
-                if args.lr_scheduler:
-                    optimizer.update_lr(counter)
+    for epoch in tqdm(range(args.num_iter)):
+        renderer.set_random_noise(epoch)
+        if args.lr_scheduler:
+            optimizer.update_lr(counter)
 
-                start = time.time()
-                optimizer.zero_grad_()
-                sketches = renderer.get_image().to(args.device)
-                losses_dict = loss_func(sketches, inputs.detach(), renderer.get_color_parameters(), renderer, counter, optimizer)
-                loss = sum(list(losses_dict.values()))
-                loss.backward()
-                optimizer.step_()
-                if epoch % args.save_interval == 0:
-                    utils.plot_batch(inputs, sketches, args, counter, use_wandb=args.use_wandb, title="stage{}_iter{}.jpg".format(stage, epoch))
-                    renderer.save_svg(args.output_dir, "svg_stage{}_iter{}".format(stage, epoch))
-                if epoch % args.eval_interval == 0:
-                    with torch.no_grad():
-                        losses_dict_eval = loss_func(sketches, inputs, renderer.get_color_parameters(), renderer.get_points_parans(), counter, optimizer, mode="eval")
-                        loss_eval = sum(list(losses_dict_eval.values()))
-                        configs_to_save["loss_eval"].append(loss_eval.item())
-                        for k in losses_dict_eval.keys():
-                            if k not in configs_to_save.keys():
-                                configs_to_save[k] = []
-                            configs_to_save[k].append(losses_dict_eval[k].item())
-                        if args.clip_fc_loss_weight:
-                            if losses_dict_eval["fc"].item() < best_fc_loss:
-                                best_fc_loss = losses_dict_eval["fc"].item() / args.clip_fc_loss_weight
-                                best_iter_fc = epoch
-                        print("=" * 100)
-                        print(f"test epoch[{epoch}/{args.num_iter}] loss[{loss.item()}] time[{time.time() - start}]")
-                        print("=" * 100)
-                        
-                        cur_delta = loss_eval.item() - best_loss
-                        print(cur_delta, min_delta)
-                        if abs(cur_delta) > min_delta:
-                            if cur_delta < 0:
-                                best_loss = loss_eval.item()
-                                best_iter = epoch
-                                terminate = False
-                                utils.plot_batch(inputs, sketches, args, counter, use_wandb=args.use_wandb, title="best_iter.jpg".format(stage, epoch))
-                                renderer.save_svg(args.output_dir, "best_iter")
+        start = time.time()
+        optimizer.zero_grad_()
+        sketches = renderer.get_image().to(args.device)
+        losses_dict = loss_func(sketches, inputs.detach(), renderer.get_color_parameters(), renderer, counter, optimizer)
+        loss = sum(list(losses_dict.values()))
+        loss.backward()
+        optimizer.step_()
+        if epoch % args.save_interval == 0:
+            utils.plot_batch(inputs, sketches, args, counter, use_wandb=args.use_wandb, title=f"iter{epoch}.jpg")
+            renderer.save_svg(args.output_dir, f"svg_iter{epoch}")
+        if epoch % args.eval_interval == 0:
+            with torch.no_grad():
+                losses_dict_eval = loss_func(sketches, inputs, renderer.get_color_parameters(), renderer.get_points_parans(), counter, optimizer, mode="eval")
+                loss_eval = sum(list(losses_dict_eval.values()))
+                configs_to_save["loss_eval"].append(loss_eval.item())
+                for k in losses_dict_eval.keys():
+                    if k not in configs_to_save.keys():
+                        configs_to_save[k] = []
+                    configs_to_save[k].append(losses_dict_eval[k].item())
+                if args.clip_fc_loss_weight:
+                    if losses_dict_eval["fc"].item() < best_fc_loss:
+                        best_fc_loss = losses_dict_eval["fc"].item() / args.clip_fc_loss_weight
+                        best_iter_fc = epoch
+                print("=" * 100)
+                print(f"test epoch[{epoch}/{args.num_iter}] loss[{loss.item()}] time[{time.time() - start}]")
+                print("=" * 100)
+                
+                cur_delta = loss_eval.item() - best_loss
+                if abs(cur_delta) > min_delta:
+                    if cur_delta < 0:
+                        best_loss = loss_eval.item()
+                        best_iter = epoch
+                        terminate = False
+                        utils.plot_batch(inputs, sketches, args, counter, use_wandb=args.use_wandb, title="best_iter.jpg")
+                        renderer.save_svg(args.output_dir, "best_iter")
 
-                        if args.use_wandb:
-                            wandb.run.summary["best_loss"] = best_loss
-                            wandb.run.summary["best_loss_fc"] = best_fc_loss
-                            wandb_dict = {"delta": cur_delta, "loss_eval": loss_eval.item()}
-                            for k in losses_dict_eval.keys():
-                                wandb_dict[k + "_eval"] = losses_dict_eval[k].item()
-                            wandb.log(wandb_dict, step=counter)
-                        
-                        if abs(cur_delta) <= min_delta:
-                            if terminate:
-                                break
-                            terminate = True
-
-                            
-                if counter == 0 and args.attention_init:
-                    utils.plot_atten(renderer.get_attn(), renderer.get_thresh(), inputs, renderer.get_inds(), 
-                                        args.use_wandb, "{}/{}.jpg".format(args.output_dir, "attention_map"), args.saliency_model)
-                    
-                print(f"train epoch[{epoch}/{args.num_iter}] loss[{loss.item()}] time[{time.time() - start}]")
                 if args.use_wandb:
-                    wandb_dict = {"loss": loss.item(), "lr": optimizer.get_lr()}
-                    for k in losses_dict.keys():
-                        wandb_dict[k] = losses_dict[k].item()
+                    wandb.run.summary["best_loss"] = best_loss
+                    wandb.run.summary["best_loss_fc"] = best_fc_loss
+                    wandb_dict = {"delta": cur_delta, "loss_eval": loss_eval.item()}
+                    for k in losses_dict_eval.keys():
+                        wandb_dict[k + "_eval"] = losses_dict_eval[k].item()
                     wandb.log(wandb_dict, step=counter)
                 
-                counter += 1
+                if abs(cur_delta) <= min_delta:
+                    if terminate:
+                        break
+                    terminate = True
 
-            renderer.save_svg(args.output_dir, "final_svg")
-            path_svg = os.path.join(args.output_dir, "best_iter.svg")
-            print(best_iter)
-            utils.log_sketch_summary_final(path_svg, args.use_wandb, args.device, best_iter, best_loss, "best total")
+                    
+        if counter == 0 and args.attention_init:
+            utils.plot_atten(renderer.get_attn(), renderer.get_thresh(), inputs, renderer.get_inds(), 
+                                args.use_wandb, "{}/{}.jpg".format(args.output_dir, "attention_map"), args.saliency_model)
             
-            return configs_to_save
+        # print(f"train epoch[{epoch}/{args.num_iter}] loss[{loss.item()}] time[{time.time() - start}]")
+        if args.use_wandb:
+            wandb_dict = {"loss": loss.item(), "lr": optimizer.get_lr()}
+            for k in losses_dict.keys():
+                wandb_dict[k] = losses_dict[k].item()
+            wandb.log(wandb_dict, step=counter)
+        
+        counter += 1
+
+    renderer.save_svg(args.output_dir, "final_svg")
+    path_svg = os.path.join(args.output_dir, "best_iter.svg")
+    utils.log_sketch_summary_final(path_svg, args.use_wandb, args.device, best_iter, best_loss, "best total")
+    
+    return configs_to_save
 
 
 if __name__ == "__main__":
