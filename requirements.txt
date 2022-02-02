@@ -29,7 +29,6 @@ dask==2021.7.2
 debugpy==1.2.0
 decorator==4.4.2
 defusedxml==0.7.1
-diffvg==0.0.1
 docker-pycreds==0.4.0
 entrypoints==0.3
 filelock==3.4.2
