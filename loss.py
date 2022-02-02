@@ -12,9 +12,6 @@ import sketch_utils
 import torchvision.transforms.functional as TF
 import random
 import numpy as np
-from scipy.ndimage.filters import gaussian_filter
-from skimage.filters import threshold_otsu
-from skimage.color import rgb2gray
 import time
 
 
@@ -87,37 +84,6 @@ class Loss(nn.Module):
             losses_dict[key] = losses_dict[key] * loss_coeffs[key]
         # print(losses_dict)
         return losses_dict
-
-
-class XDoG(object):
-    def __init__(self):
-        super(XDoG, self).__init__()
-        self.gamma=0.98
-        self.phi=200
-        self.eps=-0.1
-        self.sigma=0.8
-        self.binarize=True
-        
-    def __call__(self, batch, k=1.6):
-        if random.random() > 0.5:
-            k = random.randint(1, 12)
-            im = batch[1].permute(1,2,0).detach().cpu().numpy()
-            if im.shape[2] == 3:
-                im = rgb2gray(im)
-            imf1 = gaussian_filter(im, self.sigma)
-            imf2 = gaussian_filter(im, self.sigma * k)
-            imdiff = imf1 - self.gamma * imf2
-            imdiff = (imdiff < self.eps) * 1.0  + (imdiff >= self.eps) * (1.0 + np.tanh(self.phi * imdiff))
-            imdiff -= imdiff.min()
-            imdiff /= imdiff.max()
-            if self.binarize:
-                th = threshold_otsu(imdiff)
-                imdiff = imdiff >= th
-            imdiff = imdiff.astype('float32')
-            imdiff = torch.Tensor(imdiff).unsqueeze(0)
-            imdiff = torch.cat([imdiff,imdiff,imdiff],dim=0)
-            batch[1] = imdiff
-        return batch
 
 
 class CLIPLoss(torch.nn.Module):
