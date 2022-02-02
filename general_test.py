@@ -9,7 +9,9 @@ manager = mp.Manager()
 exit_codes = []
 losses_all = manager.dict()
 
-sp.run(["pip", "install", "-U", "scikit-learn"])
+if not os.path.isfile("./U2Net_/saved_models/u2net.pth"):
+    sp.run(["pip", "install", "gdown"])
+    sp.run(["gdown", "https://drive.google.com/uc?id=1ao1ovG1Qtx4b7EoskHXmi2E9rp5CHLcZ", "-O", "U2Net_/saved_models/"])
 
 test_name = "camel"
 output_dir = f"output_sketches/{test_name}/"

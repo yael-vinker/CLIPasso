@@ -418,7 +418,7 @@ def get_mask_u2net(args, pil_im):
 
     input_im_trans = data_transforms(pil_im).unsqueeze(0).to(args.device)
 
-    model_dir = os.path.join("/datasets/home/vinker/saliency/U-2-Net/saved_models/u2net/u2net.pth")
+    model_dir = os.path.join("./U2Net_/saved_models/u2net.pth")
     net = U2NET(3,1)
     if torch.cuda.is_available() and args.use_gpu:
         net.load_state_dict(torch.load(model_dir))
