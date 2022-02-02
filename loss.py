@@ -1,6 +1,5 @@
 
 from scipy import ndimage
-from skimage import feature
 import collections
 import torch
 import torch.nn.functional as F
@@ -118,22 +117,6 @@ class XDoG(object):
             imdiff = torch.Tensor(imdiff).unsqueeze(0)
             imdiff = torch.cat([imdiff,imdiff,imdiff],dim=0)
             batch[1] = imdiff
-        return batch
-
-
-class Canny(object):
-    def __init__(self):
-        super(Canny, self).__init__()
-
-    def __call__(self, batch):
-        if random.random() > 0.5:
-            image = batch[1].permute(1,2,0)
-            canny_img = feature.canny(rgb2gray(image.detach().cpu().numpy()), sigma=2.5)
-            canny_img = ~canny_img
-            canny_img = ndimage.binary_erosion(canny_img).astype('float32')
-            canny_img = torch.Tensor(canny_img).unsqueeze(0)
-            canny_img = torch.cat([canny_img,canny_img,canny_img],dim=0)
-            batch[1] = canny_img
         return batch
 
 
