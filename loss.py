@@ -41,12 +41,9 @@ class Loss(nn.Module):
                 "l2": L2_(),
                 "lpips": LPIPS(device=args.device).to(args.device),
                 "clip": CLIPLoss(args),
+                "clip_conv_loss": CLIPConvLoss(args),
+                "clip_text": CLIPTextLoss(args)
             }
-
-        if self.clip_text_guide:
-            self.loss_mapper["clip_text"] = CLIPTextLoss(args)
-        if self.clip_conv_loss:
-            self.loss_mapper["clip_conv_loss"] = CLIPConvLoss(args)
 
     def get_losses_to_apply(self):
         losses_to_apply = []
@@ -91,58 +88,6 @@ class Loss(nn.Module):
             losses_dict[key] = losses_dict[key] * loss_coeffs[key]
         # print(losses_dict)
         return losses_dict
-
-
-class Eraser(object):
-    def __init__(self, device):
-        self.device = device
-
-    def __call__(self, sample):
-        apply = random.random() > 0.5
-        if apply:
-            mask = torch.zeros(sample[0].unsqueeze(0).shape, device=self.device)
-            colored_pixels = (sample[0, 0] < 1).nonzero(as_tuple=False)
-            perm = torch.randperm(colored_pixels.shape[0])
-            eraser_num = int(colored_pixels.shape[0] * 0.5)
-            idx = perm[:eraser_num]
-            mask[0, :, colored_pixels[idx, 0], colored_pixels[idx, 1]] = 1.0
-            sample_ = torch.clamp(sample + mask, 0, 1)
-            return sample_
-        return sample
-
-
-class EraserChunks(object):
-    def __init__(self, device):
-        self.device = device
-
-    def __call__(self, sample):
-        apply = random.random() > 0.5
-        if apply:
-            mask = torch.zeros(sample.shape, device=self.device)
-            colored_pixels = (sample[0, 0] < 1).nonzero(as_tuple=False)
-            chunk_length = random.randrange(min(10, int(colored_pixels.shape[0] * 0.01)),
-                                            min(30, int(colored_pixels.shape[0] * 0.1)))
-            perm = torch.randperm(colored_pixels.shape[0] - chunk_length - 1)
-            idx = perm[:5]
-            idx_chunks = [j for ind in idx for j in range(ind, ind + chunk_length)]
-            mask[0, :, colored_pixels[idx_chunks, 0], colored_pixels[idx_chunks, 1]] = 1.0
-            sample_ = torch.clamp(sample + mask, 0, 1)
-            return sample_
-        return sample
-
-
-class Press(object):
-    def __init__(self, device):
-        self.device = device
-
-    def __call__(self, sample):
-        apply = random.random() > 0.5
-        if apply:
-            im_opposite = 1. - sample[0].unsqueeze(0)
-            kernel_tensor = torch.ones((3, 3, 3, 3)).to(self.device)
-            torch_result = torch.clamp(torch.nn.functional.conv2d(im_opposite, kernel_tensor, padding=1), 0, 1)
-            sample[0] = 1. - torch_result
-        return sample
 
 
 class XDoG(object):
@@ -203,18 +148,6 @@ class CLIPLoss(torch.nn.Module):
         self.device = args.device
         self.NUM_AUGS = args.num_aug_clip
         augemntations = []
-        # if "eraser" in args.augemntations:
-        #     augemntations.append(Eraser(self.device))
-        if "eraserchunks" in args.augemntations:
-            augemntations.append(EraserChunks(self.device))
-        if "press" in args.augemntations:
-            augemntations.append(Press(self.device))
-        
-        if "canny" in args.augemntations:
-            augemntations.append(Canny())
-        if "xdog" in args.augemntations:
-            augemntations.append(XDoG())
-        
         if "affine" in args.augemntations:
             augemntations.append(transforms.RandomPerspective(fill=0, p=1.0, distortion_scale=0.5))
             augemntations.append(transforms.RandomResizedCrop(224, scale=(0.8, 0.8), ratio=(1.0, 1.0)))
@@ -274,11 +207,7 @@ class LPIPS(torch.nn.Module):
         augemntations = []
         augemntations.append(transforms.RandomPerspective(fill=0, p=1.0, distortion_scale=0.5))
         augemntations.append(transforms.RandomResizedCrop(224, scale=(0.8, 0.8), ratio=(1.0, 1.0)))
-        # augemntations.append(
-        #     transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)))
         self.augment_trans = transforms.Compose(augemntations)
-        # LOG.warning("LPIPS is untested")
-
         self.feature_extractor = LPIPS._FeatureExtractor(pretrained, pre_relu).to(device)
 
     def _l2_normalize_features(self, x, eps=1e-10):
@@ -388,18 +317,7 @@ class L2_(torch.nn.Module):
 
         pred = torch.cat(sketch_augs, dim=0)
         target = torch.cat(img_augs, dim=0)
-        # print(pred.shape, target.shape)
-
-        # if self.normalize:
-        #     diffs = [torch.sum((p - t) ** 2, 1) for (p, t) in zip(pred, target)]
-        # else:
-        #     # mean instead of sum to avoid super high range
         diffs = [torch.square(p - t).mean() for (p, t) in zip(pred, target)]
-        # print(diffs)
-
-        # Spatial average
-        # diffs = [diff.mean([1, 2]) for diff in diffs]
-
         return sum(diffs)
 
 
@@ -443,7 +361,6 @@ def cos_layers(xs_conv_features, ys_conv_features, clip_model_name):
                                 zip(xs_conv_features, ys_conv_features)]
     return [(1 - torch.cosine_similarity(x_conv, y_conv, dim=1)).mean() for x_conv, y_conv in
                                  zip(xs_conv_features, ys_conv_features)]
-
 
 
 class CLIPConvLoss(torch.nn.Module):
@@ -509,14 +426,6 @@ class CLIPConvLoss(torch.nn.Module):
         self.num_augs = self.args.num_aug_clip
 
         augemntations = []
-        if "eraserchunks" in args.augemntations:
-            augemntations.append(EraserChunks(self.device))
-        if "press" in args.augemntations:
-            augemntations.append(Press(self.device))
-        if "canny" in args.augemntations:
-            augemntations.append(Canny())
-        if "xdog" in args.augemntations:
-            augemntations.append(XDoG())
         if "affine" in args.augemntations:
             augemntations.append(transforms.RandomPerspective(fill=0, p=1.0, distortion_scale=0.5))
             augemntations.append(transforms.RandomResizedCrop(224, scale=(0.8, 0.8), ratio=(1.0, 1.0)))
@@ -549,8 +458,7 @@ class CLIPConvLoss(torch.nn.Module):
 
         xs = torch.cat(sketch_augs, dim=0).to(self.device)
         ys = torch.cat(img_augs, dim=0).to(self.device)
-        # sketch_utils.plot_batch(ys, xs, self.args, self.counter, use_wandb=False, title="conv_aug{}_iter{}_{}.jpg".format(1, self.counter, mode))
-
+        
         if self.clip_model_name.startswith("RN"):
             xs_fc_features, xs_conv_features = self.forward_inspection_clip_resnet(xs)
             ys_fc_features, ys_conv_features = self.forward_inspection_clip_resnet(ys.detach())
@@ -589,8 +497,6 @@ class CLIPConvLoss(torch.nn.Module):
         return y, [x, x1, x2, x3, x4]
 
 
-
-
 class CLIPTextLoss(torch.nn.Module):
     def __init__(self, args):
         super(CLIPTextLoss, self).__init__()
@@ -602,10 +508,6 @@ class CLIPTextLoss(torch.nn.Module):
         self.device = args.device
         self.NUM_AUGS = args.num_aug_clip
         augemntations = []
-        if "eraserchunks" in args.augemntations:
-            augemntations.append(EraserChunks(self.device))
-        if "press" in args.augemntations:
-            augemntations.append(Press(self.device))
         if "affine" in args.augemntations:
             augemntations.append(transforms.RandomPerspective(fill=0, p=1.0, distortion_scale=0.5))
             augemntations.append(transforms.RandomResizedCrop(224, scale=(0.8, 0.8), ratio=(1.0, 1.0)))
@@ -622,7 +524,6 @@ class CLIPTextLoss(torch.nn.Module):
             self.targets_features = self.model.encode_text(text_input)
 
     def forward(self, sketches, targets, mode="train"):
-        
         if mode == "eval":
             # for regular clip distance, no augmentations
             with torch.no_grad():
@@ -644,5 +545,3 @@ class CLIPTextLoss(torch.nn.Module):
             loss_clip += (1. - torch.cosine_similarity(sketch_features[n:n+1], self.targets_features, dim=1))
         self.counter += 1
         return loss_clip
-        # return 1. - torch.cosine_similarity(sketches_features, self.targets_features)
-
