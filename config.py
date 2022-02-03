@@ -29,6 +29,7 @@ def parse_arguments():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--mask_object", type=int, default=0)
     parser.add_argument("--fix_scale", type=int, default=0)
+    parser.add_argument("--display_logs", type=int, default=0)
 
     # =================================
     # ============ wandb ============
@@ -104,7 +105,6 @@ def parse_arguments():
     args.output_dir = os.path.join(args.output_dir, args.wandb_name)
     if not os.path.exists(args.output_dir):
         os.mkdir(args.output_dir)
-    print("results will be saved to {}".format(args.output_dir))
     
     if args.use_wandb:
         wandb.init(project=args.wandb_project_name, entity=args.wandb_user, config=args, name=args.wandb_name, id=wandb.util.generate_id())
@@ -115,6 +115,5 @@ def parse_arguments():
         args.device = torch.device("cpu")    
     pydiffvg.set_use_gpu(torch.cuda.is_available() and args.use_gpu)
     pydiffvg.set_device(args.device)
-    print(pydiffvg.get_device())
     return args
 
