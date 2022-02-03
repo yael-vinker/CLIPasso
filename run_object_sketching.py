@@ -11,6 +11,7 @@ from IPython.display import Image as Image_colab
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--target_file", type=str, help="target image file, located in <target_images>")
+parser.add_argument("--num_iter", type=int, default=801, help="number of iterations")
 parser.add_argument("--fix_scale", type=int, default=0, help="if the target image is not squared, it is recommended to fix the scale")
 parser.add_argument("--mask_object", type=int, default=0, help="if the target image contains background, it's better to mask it out")
 parser.add_argument("--num_sketches", type=int, default=3, help="it is recommended to draw 3 sketches and automatically chose the best one")
@@ -42,8 +43,8 @@ print("=" * 50)
 print(f"Results will be saved to \n[{output_dir}] ...")
 print("=" * 50)
 
-num_iter = 2
-save_interval = 1
+num_iter = args.num_iter
+save_interval = 10
 use_gpu = args.gpu
 seeds = list(range(0, args.num_sketches * 1000, 1000))
 
