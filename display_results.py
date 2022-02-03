@@ -51,17 +51,14 @@ sketch_res = Image.fromarray((sketch_res * 255).astype('uint8'), 'RGB')
 
 input_im = Image_colab(target_path)
 display(input_im)
-
-# plt.imshow(sketch_res)
-# plt.show()
 display(sketch_res)
 
 p = re.compile("_best")
 best_sketch_dir = ""
 for m in p.finditer(svg_files[0]):
     best_sketch_dir += svg_files[0][0 : m.start()]
-print(best_sketch_dir)
-# best_sketch_dir = result_path
+
+
 sketches = []
 cur_path = f"{result_path}/{best_sketch_dir}"
 if os.path.exists(f"{cur_path}/config.npy"):
@@ -79,18 +76,4 @@ if os.path.exists(f"{cur_path}/config.npy"):
         sketches.append(sketch)
     imageio.mimsave(f"{cur_path}/sketch.gif", sketches)
 
-    call(["ffmpeg", "-y", "-framerate", "10", "-pattern_type", "glob", "-i", 
-            f"{cur_path}/iter_*.png", "-vb", "20M",
-        f"{cur_path}/sketch.mp4"])
-
-
-    call(["ffmpeg", "-y", "-i", f"{cur_path}/sketch.mp4", "-filter_complex",
-        "[0]trim=0:2[hold];[0][hold]concat[extended];[extended][0]overlay",
-        f"{cur_path}/sketch_longer.mp4"])
-
-
-display(mvp.ipython_display(f"{cur_path}/sketch_longer.mp4"))
-
-# torch
-# read_svg(svg_output_path)
-
+print(cur_path)
