@@ -125,7 +125,7 @@ def load_svg(path_svg):
     return canvas_width, canvas_height, shapes, shape_groups
 
 
-def read_svg(path_svg, multiply=False):
+def read_svg(path_svg, device, multiply=False):
     canvas_width, canvas_height, shapes, shape_groups = pydiffvg.svg_to_scene(path_svg)
     if multiply:
         canvas_width *= 2
@@ -215,12 +215,6 @@ def plot_attn_clip(attn, threshold_map, inputs, inds, use_wandb, output_path, di
     plt.tight_layout()
     if use_wandb:
         wandb.log({"attention_map": wandb.Image(plt)})
-    if display_logs:
-        img_ = Image.open(output_path)
-        img_.show()
-        # display(img_)
-#             clear_output(wait=True)
-            
     plt.savefig(output_path)
     plt.close()
 

@@ -6,6 +6,8 @@ from torch.nn.parallel import parallel_apply
 import multiprocessing as mp
 import argparse
 import os
+from IPython.display import display, clear_output
+from IPython.display import Image as Image_colab
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--target_file", type=str, help="target image file, located in <target_images>")
@@ -32,7 +34,12 @@ if not os.path.exists(output_dir):
 
 print("=" * 50)
 print(f"Processing [{args.target_file}] ...")
-print(f"Results will be saved to [{output_dir}] ...")
+print("=" * 50)
+if args.colab:
+  img_ = Image_colab(target)
+  display(img_)
+print("=" * 50)
+print(f"Results will be saved to \n[{output_dir}] ...")
 print("=" * 50)
 
 num_iter = 2
