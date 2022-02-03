@@ -47,6 +47,7 @@ svg_files = os.listdir(result_path)
 svg_files = [f for f in svg_files if "best.svg" in f]
 svg_output_path = f"{result_path}/{svg_files[0]}"
 sketch_res = read_svg(svg_output_path).cpu().numpy()
+sketch_res = Image.fromarray((sketch_res * 255).astype('uint8'), 'RGB')
 
 input_im = Image_colab(target_path)
 display(input_im)
