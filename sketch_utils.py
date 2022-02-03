@@ -3,20 +3,21 @@ import skimage
 import skimage.io
 import os
 import wandb
-from PIL import Image
 import matplotlib.pyplot as plt
-from loss import Loss
 import math
 import pydiffvg
-from torchvision import datasets, models, transforms
 import torch
-from torchvision.utils import make_grid
-import matplotlib.pyplot as plt
 import clip
 import pandas as pd
 import imageio
 import PIL
+
+from PIL import Image
+from loss import Loss
+from torchvision import datasets, models, transforms
+from torchvision.utils import make_grid
 from U2Net_.model import U2NET
+from IPython.display import display, clear_output
 
 
 def imwrite(img, filename, gamma = 2.2, normalize = False, use_wandb=False, wandb_name="", step=0, input_im=None):
@@ -82,7 +83,6 @@ def log_input(use_wandb, epoch, inputs, output_dir):
     imageio.imwrite("{}/{}.png".format(output_dir, "input"), input_)
 
 
-
 def log_sketch_summary_final(path_svg, use_wandb, device, epoch, loss, title):
     canvas_width, canvas_height, shapes, shape_groups = load_svg(path_svg)
     _render = pydiffvg.RenderFunction.apply
@@ -119,160 +119,32 @@ def log_sketch_summary(sketch, title, use_wandb):
     plt.close()
 
 
-def plot_triplet(sketches, positive, negative, args, use_wandb):
-    plt.figure()
-    plt.subplot(1,3,1)
-    grid = make_grid(positive, normalize=True, pad_value=2)
-    npgrid = grid.cpu().numpy()
-    plt.imshow(np.transpose(npgrid, (1, 2, 0)), interpolation='nearest')
-    plt.axis("off")
-    plt.title("target (positive)")
-
-    plt.subplot(1,3,2)
-    grid = make_grid(sketches, normalize=False, pad_value=2)
-    npgrid = grid.detach().cpu().numpy()
-    plt.imshow(np.transpose(npgrid, (1, 2, 0)), interpolation='nearest')
-    plt.axis("off")
-    plt.title("output sketch")
-
-    plt.subplot(1,3,3)
-    grid = make_grid(negative, normalize=False, pad_value=2)
-    npgrid = grid.detach().cpu().numpy()
-    plt.imshow(np.transpose(npgrid, (1, 2, 0)), interpolation='nearest')
-    plt.axis("off")
-    plt.title("negative")
-
-    plt.tight_layout()
-    if use_wandb:
-        wandb.log({"triplet_im": wandb.Image(plt)})
-    plt.savefig("{}/{}".format(args.output_dir, "triplet"))
-    plt.close()
-
-
 def load_svg(path_svg):
     svg = os.path.join(path_svg)
     canvas_width, canvas_height, shapes, shape_groups = pydiffvg.svg_to_scene(svg)
     return canvas_width, canvas_height, shapes, shape_groups
 
 
-def plot_sorted(args, loss_func, canvas_width, canvas_height, shapes, original_target, t):
-    with torch.no_grad():
-        loss_per_stroke = []
-        for i, s in enumerate(shapes):
-            stroke_color = torch.tensor([0.0, 0.0, 0.0, 1.0])
-            shapes_=[]
-            shape_groups =[]
-            for j in range(len(shapes)):
-                if j != i:
-                    shapes_.append(shapes[j])
-                    shape_groups.append(pydiffvg.ShapeGroup(shape_ids = torch.tensor([len(shapes_) - 1]), fill_color = None, stroke_color = stroke_color))
-        # for i, s in enumerate(shapes):
-        #     shapes_ = [s]
-        #     path_group_ = pydiffvg.ShapeGroup(shape_ids = torch.tensor([len(shapes_) - 1]), fill_color = None, stroke_color = stroke_color)
-        #     shape_groups = [path_group_]
-            img = render_warp(canvas_width, canvas_height, shapes_, shape_groups)
-            img = img[:, :, 3:4] * img[:, :, :3] + torch.ones(img.shape[0], img.shape[1], 3, device = pydiffvg.get_device()) * (1 - img[:, :, 3:4])
-            img2 = img.clone()
-            img = img[:, :, :3]
-            # Convert img from HWC to NCHW
-            img = img.unsqueeze(0)
-            img = img.permute(0, 3, 1, 2) # NHWC -> NCHW
-
-            loss = loss_func(img, t, use_wandb=False, print_=False, compute_grad_ratio=False)
-            loss_per_stroke.append(loss.item())
-            utils.imwrite(img2.cpu(), '{}/{}_sorted_{}.jpg'.format(args.output_dir, i, loss.item()), gamma=gamma, use_wandb=args.use_wandb, wandb_name="sorted", step=t, input_im=original_target)
-
-        blue = torch.tensor([0,1,0,1])
-        red = torch.tensor([1,0,0,1])
-        inds = np.argsort(loss_per_stroke)[::-1]
-        ordered_shape = []
-        ordered_shape_groups = []
-        for c, i in enumerate(inds):
-            shapes_ = [shapes[i]]
-            ordered_shape.append(shapes[i])
-            stroke_color = (1 - c / (len(inds) - 1)) * blue + (c / (len(inds) -1 )) * red
-            ordered_shape_groups.append(pydiffvg.ShapeGroup(shape_ids = torch.tensor([len(ordered_shape) - 1]), fill_color = None, stroke_color = stroke_color))
-        img = render_warp(canvas_width, canvas_height, ordered_shape, ordered_shape_groups)
-        img = img[:, :, 3:4] * img[:, :, :3] + torch.ones(img.shape[0], img.shape[1], 3, device = pydiffvg.get_device()) * (1 - img[:, :, 3:4])
-        utils.imwrite(img.cpu(), '{}/final_sorted.jpg'.format(args.output_dir), gamma=gamma, use_wandb=args.use_wandb, wandb_name="sorted", step=t, input_im=original_target)
-
-
-def get_sorted_strokes_by_loss(args, loss_func, canvas_width, canvas_height, shapes, t):
-    args.percep_loss="lpips"
-    args.perceptual_weight=1
-    args.train_with_clip=0
-    args.clip_weight=0
-    loss_func = Loss(args)
-    with torch.no_grad():
-        loss_per_stroke = []
-        # for i, s in enumerate(shapes):
-        #     shapes_ = [s]
-        #     path_group_ = pydiffvg.ShapeGroup(shape_ids = torch.tensor([len(shapes_) - 1]), fill_color = None, stroke_color = stroke_color)
-        #     shape_groups = [path_group_]
-        for i, s in enumerate(shapes):
-            stroke_color = torch.tensor([0.0, 0.0, 0.0, 1.0])
-            shapes_=[]
-            shape_groups =[]
-            for j in range(len(shapes)):
-                if j != i:
-                    shapes_.append(shapes[j])
-                    shape_groups.append(pydiffvg.ShapeGroup(shape_ids = torch.tensor([len(shapes_) - 1]), fill_color = None, stroke_color = stroke_color))
-            img = render_warp(canvas_width, canvas_height, shapes_, shape_groups)
-            img = img[:, :, 3:4] * img[:, :, :3] + torch.ones(img.shape[0], img.shape[1], 3, device = pydiffvg.get_device()) * (1 - img[:, :, 3:4])
-            img = img[:, :, :3]
-            # Convert img from HWC to NCHW
-            img = img.unsqueeze(0)
-            img = img.permute(0, 3, 1, 2) # NHWC -> NCHW
-
-            loss = loss_func(img, t, use_wandb=False, print_=False)
-            loss_per_stroke.append(loss.item())
-    inds = np.argsort(loss_per_stroke)[::-1]
-    args.percep_loss="none"
-    args.perceptual_weight=0
-    args.train_with_clip=1
-    args.clip_weight=1
-    return inds
-
-
-def lr_func_cosine(cur_epoch, args):
-    offset = args.WARMUP_EPOCHS if args.WARMUP_EPOCHS else 0.0
-    lr = (
-        args.COSINE_END_LR
-        + (args.BASE_LR - args.COSINE_END_LR)
-        * (
-            math.cos(
-                math.pi * (cur_epoch - offset) / (args.num_iter - offset)
-            )
-            + 1.0
-        )
-        * 0.5
-    )
-    return lr
-
-
-def get_epoch_lr(cur_epoch, args):
-    lr = lr_func_cosine(cur_epoch, args)
-    # Perform warm up.
-    if cur_epoch < args.WARMUP_EPOCHS:
-        lr_start = args.WARMUP_START_LR
-        lr_end = lr_func_cosine(args.WARMUP_EPOCHS, args)
-        alpha = (lr_end - lr_start) / args.WARMUP_EPOCHS
-        lr = cur_epoch * alpha + lr_start
-    return lr
-
-
-def load_dataset(data_dir, batch_size):
-    data_transforms = transforms.Compose([
-        transforms.Resize(224),
-        transforms.CenterCrop(224),
-        transforms.ToTensor()
-    ])
-    # expected range should be [0,1] after loading since each loss needs a different normalisation
-
-    image_datasets = datasets.ImageFolder(os.path.join(data_dir), data_transforms)
-    dataloaders = torch.utils.data.DataLoader(image_datasets, batch_size=batch_size, shuffle=True, num_workers=4)
-    print("[{}] images were loaded".format(len(image_datasets)))
-    return dataloaders
+def read_svg(path_svg, multiply=False):
+    canvas_width, canvas_height, shapes, shape_groups = pydiffvg.svg_to_scene(path_svg)
+    if multiply:
+        canvas_width *= 2
+        canvas_height *= 2
+        for path in shapes:
+            path.points *= 2
+            path.stroke_width *= 2
+    _render = pydiffvg.RenderFunction.apply
+    scene_args = pydiffvg.RenderFunction.serialize_scene(canvas_width, canvas_height, shapes, shape_groups)
+    img = _render(canvas_width, # width
+                canvas_height, # height
+                2,   # num_samples_x
+                2,   # num_samples_y
+                0,   # seed
+                None,
+                *scene_args)
+    img = img[:, :, 3:4] * img[:, :, :3] + torch.ones(img.shape[0], img.shape[1], 3, device = device) * (1 - img[:, :, 3:4])
+    img = img[:, :, :3]
+    return img
 
 
 def plot_attn_dino(attn, threshold_map, inputs, inds, use_wandb, output_path):
@@ -315,7 +187,8 @@ def plot_attn_dino(attn, threshold_map, inputs, inds, use_wandb, output_path):
     plt.savefig(output_path)
     plt.close()
 
-def plot_attn_clip(attn, threshold_map, inputs, inds, use_wandb, output_path):
+
+def plot_attn_clip(attn, threshold_map, inputs, inds, use_wandb, output_path, display_logs):
     # currently supports one image (and not a batch)
     plt.figure(figsize=(10,5))
    
@@ -342,60 +215,21 @@ def plot_attn_clip(attn, threshold_map, inputs, inds, use_wandb, output_path):
     plt.tight_layout()
     if use_wandb:
         wandb.log({"attention_map": wandb.Image(plt)})
+    if display_logs:
+        img_ = Image.open(output_path)
+        img_.show()
+        # display(img_)
+#             clear_output(wait=True)
+            
     plt.savefig(output_path)
     plt.close()
 
-def plot_atten(attn, threshold_map, inputs, inds, use_wandb, output_path, saliency_model):
+
+def plot_atten(attn, threshold_map, inputs, inds, use_wandb, output_path, saliency_model, display_logs):
     if saliency_model == "dino":
         plot_attn_dino(attn, threshold_map, inputs, inds, use_wandb, output_path)
     elif saliency_model == "clip":
-        plot_attn_clip(attn, threshold_map, inputs, inds, use_wandb, output_path)
-
-
-classes_to_folders_sketchcoco = {
-    "cat": "17",
-    "dog": "18",
-    "horse": "19",
-    "sheep": "20",
-    "cow": "21",
-    "elephant": "22",
-    "zebra": "24",
-    "giraffe": "25"
-}
-classes = [
-    "cat",
-    "dog",
-    "horse",
-    "sheep",
-    "cow",
-    "elephant",
-    "zebra",
-    "giraffe"
-]
-num_classes = len(classes)
-
-def get_files_path(parent_path, names_per_class, label, classes_, folder_names, num_images_per_class):
-    category_ = []
-    images_path_ = []
-    labels_ = []
-    for j, c in enumerate(classes_):
-        images_names = names_per_class[c]
-        cur_num_images_per_class = min(num_images_per_class, len(images_names))
-        category_.extend([classes_[j] for i in range(cur_num_images_per_class)])
-        images_path_.extend(["{}/{}/{}".format(parent_path, folder_names[j], name_) for name_ in images_names])
-        labels_.extend([label + classes_[j] for i in range(cur_num_images_per_class)])
-    return category_, images_path_, labels_
-
-
-def get_images_names(parent_path, classes_, folder_names, num_images_per_class, corrupted_files=[]):
-    # to verify pairs of images and sketches with same file name
-    names_per_class_ = {}
-    for j, c in enumerate(classes_):
-        class_path = "{}/{}".format(parent_path, folder_names[j])
-        images_names = os.listdir(class_path)
-        images_names = [name for name in images_names if "{}-{}\n".format(os.path.splitext(name)[0], str(1)) not in corrupted_files][:num_images_per_class]
-        names_per_class_[c] = images_names
-    return names_per_class_
+        plot_attn_clip(attn, threshold_map, inputs, inds, use_wandb, output_path, display_logs)
 
 
 def fix_image_scale(im):

@@ -103,9 +103,7 @@ def main(args):
                     if losses_dict_eval["fc"].item() < best_fc_loss:
                         best_fc_loss = losses_dict_eval["fc"].item() / args.clip_fc_loss_weight
                         best_iter_fc = epoch
-                print("=" * 100)
-                print(f"test epoch[{epoch}/{args.num_iter}] loss[{loss.item()}] time[{time.time() - start}]")
-                print("=" * 100)
+                print(f"eval iter[{epoch}/{args.num_iter}] loss[{loss.item()}] time[{time.time() - start}]")
                 
                 cur_delta = loss_eval.item() - best_loss
                 if abs(cur_delta) > min_delta:
@@ -132,9 +130,10 @@ def main(args):
                     
         if counter == 0 and args.attention_init:
             utils.plot_atten(renderer.get_attn(), renderer.get_thresh(), inputs, renderer.get_inds(), 
-                                args.use_wandb, "{}/{}.jpg".format(args.output_dir, "attention_map"), args.saliency_model)
-            
-        # print(f"train epoch[{epoch}/{args.num_iter}] loss[{loss.item()}] time[{time.time() - start}]")
+                                args.use_wandb, "{}/{}.jpg".format(args.output_dir, "attention_map"), 
+                                args.saliency_model, args.display_logs)
+
+
         if args.use_wandb:
             wandb_dict = {"loss": loss.item(), "lr": optimizer.get_lr()}
             for k in losses_dict.keys():
