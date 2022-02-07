@@ -15,7 +15,7 @@ import numpy as np
 
 from torch.cuda.amp import autocast
 from PIL import Image
-from loss import Loss
+from models.loss import Loss
 from models.painter_params import Painter, PainterOptimizer
 import sys 
 import PIL
