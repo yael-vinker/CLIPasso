@@ -13,7 +13,6 @@ import imageio
 import PIL
 
 from PIL import Image
-from loss import Loss
 from torchvision import datasets, models, transforms
 from torchvision.utils import make_grid
 from U2Net_.model import U2NET
