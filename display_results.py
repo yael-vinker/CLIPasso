@@ -1,17 +1,16 @@
-import re
-import torch
-import pydiffvg
 import argparse
-from IPython.display import display
-from IPython.display import Image as Image_colab
-import matplotlib.pyplot as plt
-import imageio
-import moviepy.editor as mvp
-from subprocess import call
 import os
-import numpy as np
-from PIL import Image
+import re
 
+import imageio
+import matplotlib.pyplot as plt
+import moviepy.editor as mvp
+import numpy as np
+import pydiffvg
+import torch
+from IPython.display import Image as Image_colab
+from IPython.display import display
+from PIL import Image
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--target_file", type=str,

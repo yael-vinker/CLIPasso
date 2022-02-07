@@ -1,22 +1,16 @@
-import torch
 import random
-import argparse
-import math
-import os
-import wandb
+import CLIP_.clip as clip
 import numpy as np
-import torch.nn.functional as F
-import torch.nn as nn
 import pydiffvg
 import sketch_utils as utils
-from torchvision import transforms
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from PIL import Image
-# import clip
-import CLIP_.clip as clip
-from skimage.color import rgb2gray
 from scipy.ndimage.filters import gaussian_filter
+from skimage.color import rgb2gray
 from skimage.filters import threshold_otsu
-import PIL
+from torchvision import transforms
 
 
 class Painter(torch.nn.Module):
