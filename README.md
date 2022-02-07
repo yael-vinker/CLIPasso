@@ -5,7 +5,7 @@ Official implementation.
 <br>
 <br>
 
-![](readme_images/teaser.png?raw=true)
+![](repo_images/teaser.png?raw=true)
 <!-- <p align='center'>  
   <img src='results/teaser.png' />
 </p> -->
@@ -34,7 +34,7 @@ docker.io/yaelvinker/yv_base_clip:latest
 docker start sketch_update
 docker run --name unpaired_tmo -it -p 8888:8888 unpaired_tmo /bin/bash
 ``` -->
-
+<!-- 
 #### Installation via Pip/Conda/Virtualenv
 1.  Clone the repo:
 ```bash
@@ -47,7 +47,7 @@ python3.6 -m venv hdr_venv
 source hdr_venv/bin/activate
 pip install -r requirements.txt
 ```
-
+ -->
 <br>
 <br>
 
