@@ -1,18 +1,23 @@
-# CLIPSketch: Semantically-Aware Abstract Object Sketching
+# CLIPasso: Semantically-Aware Object Sketching
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/yael-vinker/CLIPSketch/blob/main/CLIPSketch.ipynb) [![arXiv](https://img.shields.io/badge/arXiv-2108.00946-b31b1b.svg)](https://arxiv.org/)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/yael-vinker/CLIPasso/blob/main/CLIPasso.ipynb) 
+<!-- [![arXiv](https://img.shields.io/badge/arXiv-2108.00946-b31b1b.svg)](https://arxiv.org/) -->
 
 
 
-[[Project Website](https://)]
+[[Project Website](https://clipasso.github.io/clipasso/)]
+<br>
+<br>
+This is the official implementation of CLIPasso, a method for converting an image of an object to a sketch, allowing for varying levels of abstraction. <br>
+
 <br>
 <br>
 
 ![](repo_images/teaser.png?raw=true)
-<!-- <p align='center'>  
-  <img src='results/teaser.png' />
-</p> -->
-
+At a high level, we define a sketch as a set of Bézier curves and use a differentiable rasterizer ([diffvg](https://github.com/BachiLi/diffvg)) to optimize the parameters of the curves directly with respect to a CLIP-based perceptual loss. <br>
+We combine the final and intermediate activations of a pre-trained CLIP model to achieve both geometric and semantic simplifications.
+<br> The abstraction degree is controlled by varying the number of strokes.
+    
 <br>
 
 ## Installation
