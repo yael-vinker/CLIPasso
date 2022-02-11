@@ -1,3 +1,7 @@
+import warnings
+warnings.filterwarnings('ignore')
+warnings.simplefilter('ignore')
+
 from tqdm import tqdm
 from torchvision import transforms, models
 
@@ -94,7 +98,7 @@ def main(args):
         if epoch % args.save_interval == 0:
             utils.plot_batch(inputs, sketches, args, counter,
                              use_wandb=args.use_wandb, title=f"iter{epoch}.jpg")
-            renderer.save_svg(args.output_dir, f"svg_iter{epoch}")
+            renderer.save_svg(f"{args.output_dir}/svg_logs", f"svg_iter{epoch}")
         if epoch % args.eval_interval == 0:
             with torch.no_grad():
                 losses_dict_eval = loss_func(sketches, inputs, renderer.get_color_parameters(
@@ -110,8 +114,8 @@ def main(args):
                         best_fc_loss = losses_dict_eval["fc"].item(
                         ) / args.clip_fc_loss_weight
                         best_iter_fc = epoch
-                print(
-                    f"eval iter[{epoch}/{args.num_iter}] loss[{loss.item()}] time[{time.time() - start}]")
+                # print(
+                #     f"eval iter[{epoch}/{args.num_iter}] loss[{loss.item()}] time[{time.time() - start}]")
 
                 cur_delta = loss_eval.item() - best_loss
                 if abs(cur_delta) > min_delta:
