@@ -425,7 +425,7 @@ class CLIPConvLoss(torch.nn.Module):
 
         if self.clip_model_name.startswith("RN"):
             xs_fc_features, xs_conv_features = self.forward_inspection_clip_resnet(
-                xs)
+                xs.contiguous())
             ys_fc_features, ys_conv_features = self.forward_inspection_clip_resnet(
                 ys.detach())
 
