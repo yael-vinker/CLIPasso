@@ -52,7 +52,7 @@ result_path = f"{abs_path}/output_sketches/{os.path.splitext(args.target_file)[0
 svg_files = os.listdir(result_path)
 svg_files = [f for f in svg_files if "best.svg" in f]
 svg_output_path = f"{result_path}/{svg_files[0]}"
-sketch_res = read_svg(svg_output_path).cpu().numpy()
+sketch_res = read_svg(svg_output_path, multiply=True).cpu().numpy()
 sketch_res = Image.fromarray((sketch_res * 255).astype('uint8'), 'RGB')
 
 input_im = Image_colab(target_path)
@@ -67,6 +67,9 @@ for m in p.finditer(svg_files[0]):
 
 sketches = []
 cur_path = f"{result_path}/{best_sketch_dir}"
+sketch_res.save(f"{cur_path}/final_sketch.png")
+print(f"You can download the result sketch from {cur_path}/final_sketch.png")
+
 if not os.path.exists(f"{cur_path}/svg_to_png"):
     os.mkdir(f"{cur_path}/svg_to_png")
 if os.path.exists(f"{cur_path}/config.npy"):
