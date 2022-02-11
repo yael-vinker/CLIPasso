@@ -96,7 +96,7 @@ def main(args):
         loss.backward()
         optimizer.step_()
         if epoch % args.save_interval == 0:
-            utils.plot_batch(inputs, sketches, args, counter,
+            utils.plot_batch(inputs, sketches, f"{args.output_dir}/jpg_logs", counter,
                              use_wandb=args.use_wandb, title=f"iter{epoch}.jpg")
             renderer.save_svg(f"{args.output_dir}/svg_logs", f"svg_iter{epoch}")
         if epoch % args.eval_interval == 0:
@@ -124,7 +124,7 @@ def main(args):
                         best_iter = epoch
                         terminate = False
                         utils.plot_batch(
-                            inputs, sketches, args, counter, use_wandb=args.use_wandb, title="best_iter.jpg")
+                            inputs, sketches, args.output_dir, counter, use_wandb=args.use_wandb, title="best_iter.jpg")
                         renderer.save_svg(args.output_dir, "best_iter")
 
                 if args.use_wandb:
