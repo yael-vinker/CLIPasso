@@ -1,3 +1,7 @@
+import warnings
+warnings.filterwarnings('ignore')
+warnings.simplefilter('ignore')
+
 import argparse
 import multiprocessing as mp
 import os
@@ -11,16 +15,18 @@ from IPython.display import display
 parser = argparse.ArgumentParser()
 parser.add_argument("--target_file", type=str,
                     help="target image file, located in <target_images>")
-parser.add_argument("--num_iter", type=int, default=801,
+parser.add_argument("--num_strokes", type=int, default=16,
+                    help="number of strokes used to generate the sketch, this defines the level of abstraction.")
+parser.add_argument("--num_iter", type=int, default=2001,
                     help="number of iterations")
 parser.add_argument("--fix_scale", type=int, default=0,
                     help="if the target image is not squared, it is recommended to fix the scale")
 parser.add_argument("--mask_object", type=int, default=0,
                     help="if the target image contains background, it's better to mask it out")
-parser.add_argument("--num_sketches", type=int, default=3,
+parser.add_argument("--num_sketches", type=int, default=1,
                     help="it is recommended to draw 3 sketches and automatically chose the best one")
 parser.add_argument('-colab', action='store_true')
-parser.add_argument('-gpu', action='store_false')
+parser.add_argument('-cpu', action='store_true')
 args = parser.parse_args()
 
 multiprocess = not args.colab and args.num_sketches > 1
@@ -50,7 +56,8 @@ print("=" * 50)
 
 num_iter = args.num_iter
 save_interval = 10
-use_gpu = args.gpu
+use_gpu = not args.cpu
+print(f"GPU: {use_gpu}")
 seeds = list(range(0, args.num_sketches * 1000, 1000))
 
 exit_codes = []
@@ -60,12 +67,13 @@ losses_all = manager.dict()
 
 def run(seed, wandb_name):
     exit_codes.append(sp.run(["python", "painterly_rendering.py", target,
+                              "--num_paths", str(args.num_strokes),
                               "--output_dir", output_dir,
                               "--wandb_name", wandb_name,
                               "--num_iter", str(num_iter),
                               "--save_interval", str(save_interval),
                               "--seed", str(seed),
-                              "--use_gpu", str(int(args.gpu)),
+                              "--use_gpu", str(int(use_gpu)),
                               "--fix_scale", str(args.fix_scale),
                               "--mask_object", str(args.mask_object),
                               "--mask_object_attention", str(
@@ -83,7 +91,7 @@ if multiprocess:
     P = mp.Pool(ncpus)  # Generate pool of workers
 
 for seed in seeds:
-    wandb_name = f"{test_name}_seed{seed}"
+    wandb_name = f"{test_name}_{args.num_strokes}strokes_seed{seed}"
     if multiprocess:
         # run simulation and ISF analysis in each process
         P.apply_async(run, (seed, wandb_name))
