@@ -48,9 +48,9 @@ def read_svg(path_svg, multiply=False):
 
 abs_path = os.path.abspath(os.getcwd())
 target_path = f"{abs_path}/target_images/{args.target_file}"
-result_path = f"{abs_path}/output_sketches/{os.path.splitext(args.target_file)[0]}/"
+result_path = f"{abs_path}/output_sketches/{os.path.splitext(args.target_file)[0]}"
 svg_files = os.listdir(result_path)
-svg_files = [f for f in svg_files if "best.svg" in f]
+svg_files = [f for f in svg_files if "best_iter.svg" in f]
 svg_output_path = f"{result_path}/{svg_files[0]}"
 sketch_res = read_svg(svg_output_path).cpu().numpy()
 sketch_res = Image.fromarray((sketch_res * 255).astype('uint8'), 'RGB')
@@ -67,6 +67,8 @@ for m in p.finditer(svg_files[0]):
 
 sketches = []
 cur_path = f"{result_path}/{best_sketch_dir}"
+if not os.path.exists(f"{cur_path}/svg_to_png"):
+    os.mkdir(f"{cur_path}/svg_to_png")
 if os.path.exists(f"{cur_path}/config.npy"):
     config = np.load(f"{cur_path}/config.npy", allow_pickle=True)[()]
     inter = config["save_interval"]
@@ -74,11 +76,11 @@ if os.path.exists(f"{cur_path}/config.npy"):
     inds = np.argsort(loss_eval)
     intervals = list(range(0, (inds[0] + 1) * inter, inter))
     for i_ in intervals:
-        path_svg = f"{cur_path}/svg_iter{i_}.svg"
+        path_svg = f"{cur_path}/svg_logs/svg_iter{i_}.svg"
         sketch = read_svg(path_svg, multiply=True).cpu().numpy()
         sketch = Image.fromarray((sketch * 255).astype('uint8'), 'RGB')
         # print("{0}/iter_{1:04}.png".format(cur_path, int(i_)))
-        sketch.save("{0}/iter_{1:04}.png".format(cur_path, int(i_)))
+        sketch.save("{0}/{1}/iter_{2:04}.png".format(cur_path, "svg_to_png", int(i_)))
         sketches.append(sketch)
     imageio.mimsave(f"{cur_path}/sketch.gif", sketches)
 
