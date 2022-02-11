@@ -70,13 +70,30 @@ To sketch your own image, from CLIPSketch run:
 ```bash
 python run_object_sketching.py --target_file <file_name>
 ```
-A camel image is given for example:
+The resulting sketches will be saved to the "output_sketches" folder, in SVG format.
+
+Optional arguments:
+* ```--num_strokes``` Defines the number of strokes used to create the sketch, which determines the level of abstraction. The default value is set to 16, but for different images, different numbers might produce better results. 
+* ```--mask_object``` It is recommended to use images without a background, however, if your image contains a background, you can mask it out by using this flag with "1" as an argument.
+* ```--fix_scale``` If your image is not squared, it might be cut off, it is recommended to use this flag with 1 as input to automatically fix the scale without cutting the image.
+* ```--num_sketches``` As stated in the paper, by default there will be three parallel running scripts to synthesize three sketches and automatically choose the best one. However, for some environments (for example when running on CPU) this might be slow, so you can specify --num_sketches 1 instead.
+* ```-cpu``` If you want to run the code on the cpu (not recommended as it might be very slow).
+
+<br>
+<b>For example, below are optional running configurations:</b>
+<br>
+
+Sketching the camel with defauls parameters:
 ```bash
 python run_object_sketching.py --target_file "camel.png"
 ```
-Optional arguments:
-* --mask_object: It is recommended to use images without a background, however, if your image contains a background, you can mask it out by using this flag with "1" as an argument.
-* --fix_scale: If your image is not squared, it might be cut off, it is recommended to use this flag with 1 as input to automatically fix the scale without cutting the image.
-* --num_sketches: As stated in the paper, by default there will be three parallel running scripts to synthesize three sketches and automatically choose the best one. However, for some environments (for example when running on CPU) this might be slow, so you can specify --num_sketches 1 instead.
+Producing a single sketch of the camel at lower level of abstraction with 32 strokes:
+```bash
+python run_object_sketching.py --target_file "camel.png" --num_strokes 32 --num_sketches 1
+```
+Sketching the flamingo with higher level of abstraction, using 8 strokes:
+```bash
+python run_object_sketching.py --target_file "flamingo.png" --num_strokes 8
+```
 
-The resulting sketches will be saved to the "output_sketches" folder, in SVG format.
+
