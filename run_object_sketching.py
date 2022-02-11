@@ -23,13 +23,15 @@ parser.add_argument("--fix_scale", type=int, default=0,
                     help="if the target image is not squared, it is recommended to fix the scale")
 parser.add_argument("--mask_object", type=int, default=0,
                     help="if the target image contains background, it's better to mask it out")
-parser.add_argument("--num_sketches", type=int, default=1,
+parser.add_argument("--num_sketches", type=int, default=3,
                     help="it is recommended to draw 3 sketches and automatically chose the best one")
+parser.add_argument("--multiprocess", type=int, default=0,
+                    help="recommended to use multiprocess if your computer has enough memory")
 parser.add_argument('-colab', action='store_true')
 parser.add_argument('-cpu', action='store_true')
 args = parser.parse_args()
 
-multiprocess = not args.colab and args.num_sketches > 1
+multiprocess = not args.colab and args.num_sketches > 1 and args.multiprocess
 abs_path = os.path.abspath(os.getcwd())
 
 target = f"{abs_path}/target_images/{args.target_file}"
@@ -46,11 +48,9 @@ if not os.path.exists(output_dir):
 
 print("=" * 50)
 print(f"Processing [{args.target_file}] ...")
-print("=" * 50)
 if args.colab:
     img_ = Image_colab(target)
     display(img_)
-print("=" * 50)
 print(f"Results will be saved to \n[{output_dir}] ...")
 print("=" * 50)
 
