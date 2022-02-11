@@ -115,6 +115,13 @@ def parse_arguments():
     if not os.path.exists(args.output_dir):
         os.mkdir(args.output_dir)
 
+    jpg_logs_dir = f"{args.output_dir}/jpg_logs"
+    svg_logs_dir = f"{args.output_dir}/svg_logs"
+    if not os.path.exists(jpg_logs_dir):
+        os.mkdir(jpg_logs_dir)
+    if not os.path.exists(svg_logs_dir):
+        os.mkdir(svg_logs_dir)
+
     if args.use_wandb:
         wandb.init(project=args.wandb_project_name, entity=args.wandb_user,
                    config=args, name=args.wandb_name, id=wandb.util.generate_id())

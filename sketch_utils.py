@@ -61,7 +61,7 @@ def plot_batch(inputs, outputs, args, step, use_wandb, title):
     plt.tight_layout()
     if use_wandb:
         wandb.log({"output": wandb.Image(plt)}, step=step)
-    plt.savefig("{}/{}".format(args.output_dir, title))
+    plt.savefig("{}/{}".format(f"{args.output_dir}/jpg_logs", title))
     plt.close()
 
 
@@ -76,6 +76,7 @@ def log_input(use_wandb, epoch, inputs, output_dir):
     plt.close()
     input_ = inputs[0].cpu().clone().detach().permute(1, 2, 0).numpy()
     input_ = (input_ - input_.min()) / (input_.max() - input_.min())
+    input_ = (input_ * 255).astype(np.uint8)
     imageio.imwrite("{}/{}.png".format(output_dir, "input"), input_)
 
 
@@ -272,7 +273,7 @@ def get_mask_u2net(args, pil_im):
     mask = torch.cat([predict, predict, predict], axis=0).permute(1, 2, 0)
     mask = mask.cpu().numpy()
     # predict_np = predict.clone().cpu().data.numpy()
-    im = Image.fromarray(mask[:, :, 0]*255).convert('RGB')
+    im = Image.fromarray((mask[:, :, 0]*255).astype(np.uint8)).convert('RGB')
     im.save(f"{args.output_dir}/mask.png")
 
     im_np = np.array(pil_im)
