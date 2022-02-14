@@ -1,7 +1,7 @@
 # CLIPasso: Semantically-Aware Object Sketching
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/yael-vinker/CLIPasso/blob/main/CLIPasso.ipynb) 
-<!-- [![arXiv](https://img.shields.io/badge/arXiv-2108.00946-b31b1b.svg)](https://arxiv.org/) -->
+[![arXiv](https://img.shields.io/badge/arXiv-2108.00946-b31b1b.svg)](https://arxiv.org/abs/2202.05822)
 
 
 
