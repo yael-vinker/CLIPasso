@@ -96,4 +96,17 @@ Sketching the flamingo with higher level of abstraction, using 8 strokes:
 python run_object_sketching.py --target_file "flamingo.png" --num_strokes 8
 ```
 
+## Citation
 
+If you make use of our work, please cite our paper:
+
+```
+@misc{vinker2022clipasso,
+      title={CLIPasso: Semantically-Aware Object Sketching}, 
+      author={Yael Vinker and Ehsan Pajouheshgar and Jessica Y. Bo and Roman Christian Bachmann and Amit Haim Bermano and Daniel Cohen-Or and Amir Zamir and Ariel Shamir},
+      year={2022},
+      eprint={2202.05822},
+      archivePrefix={arXiv},
+      primaryClass={cs.GR}
+}
+```
