@@ -1,4 +1,6 @@
+import sys
 import warnings
+
 warnings.filterwarnings('ignore')
 warnings.simplefilter('ignore')
 
@@ -9,8 +11,10 @@ import subprocess as sp
 from shutil import copyfile
 
 import numpy as np
+import torch
 from IPython.display import Image as Image_colab
 from IPython.display import display
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--target_file", type=str,
@@ -57,6 +61,10 @@ print("=" * 50)
 num_iter = args.num_iter
 save_interval = 10
 use_gpu = not args.cpu
+if not torch.cuda.is_available():
+    use_gpu = False
+    print("CUDA is not configured with GPU, running with CPU instead.")
+    print("Note that this will be very slow, it is recommended to use colab.")
 print(f"GPU: {use_gpu}")
 seeds = list(range(0, args.num_sketches * 1000, 1000))
 
@@ -66,19 +74,22 @@ losses_all = manager.dict()
 
 
 def run(seed, wandb_name):
-    exit_codes.append(sp.run(["python", "painterly_rendering.py", target,
-                              "--num_paths", str(args.num_strokes),
-                              "--output_dir", output_dir,
-                              "--wandb_name", wandb_name,
-                              "--num_iter", str(num_iter),
-                              "--save_interval", str(save_interval),
-                              "--seed", str(seed),
-                              "--use_gpu", str(int(use_gpu)),
-                              "--fix_scale", str(args.fix_scale),
-                              "--mask_object", str(args.mask_object),
-                              "--mask_object_attention", str(
-                                  args.mask_object),
-                              "--display_logs", str(int(args.colab))]))
+    exit_code = sp.run(["python", "painterly_rendering.py", target,
+                            "--num_paths", str(args.num_strokes),
+                            "--output_dir", output_dir,
+                            "--wandb_name", wandb_name,
+                            "--num_iter", str(num_iter),
+                            "--save_interval", str(save_interval),
+                            "--seed", str(seed),
+                            "--use_gpu", str(int(use_gpu)),
+                            "--fix_scale", str(args.fix_scale),
+                            "--mask_object", str(args.mask_object),
+                            "--mask_object_attention", str(
+                                args.mask_object),
+                            "--display_logs", str(int(args.colab))])
+    if exit_code.returncode:
+        sys.exit(1)
+
     config = np.load(f"{output_dir}/{wandb_name}/config.npy",
                      allow_pickle=True)[()]
     loss_eval = np.array(config['loss_eval'])

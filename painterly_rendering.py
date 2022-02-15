@@ -1,27 +1,29 @@
 import warnings
+
 warnings.filterwarnings('ignore')
 warnings.simplefilter('ignore')
 
-from tqdm import tqdm
-from torchvision import transforms, models
-
-import torch
 import argparse
 import math
-import wandb
-import torch.nn.functional as F
-import torch.nn as nn
 import os
-import sketch_utils as utils
+import sys
 import time
-import config
-import numpy as np
+import traceback
 
-from torch.cuda.amp import autocast
+import numpy as np
+import PIL
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import wandb
 from PIL import Image
+from torchvision import models, transforms
+from tqdm import tqdm
+
+import config
+import sketch_utils as utils
 from models.loss import Loss
 from models.painter_params import Painter, PainterOptimizer
-import PIL
 
 
 def load_renderer(args, target_im=None, mask=None):
@@ -98,7 +100,8 @@ def main(args):
         if epoch % args.save_interval == 0:
             utils.plot_batch(inputs, sketches, f"{args.output_dir}/jpg_logs", counter,
                              use_wandb=args.use_wandb, title=f"iter{epoch}.jpg")
-            renderer.save_svg(f"{args.output_dir}/svg_logs", f"svg_iter{epoch}")
+            renderer.save_svg(
+                f"{args.output_dir}/svg_logs", f"svg_iter{epoch}")
         if epoch % args.eval_interval == 0:
             with torch.no_grad():
                 losses_dict_eval = loss_func(sketches, inputs, renderer.get_color_parameters(
@@ -166,7 +169,12 @@ def main(args):
 if __name__ == "__main__":
     args = config.parse_arguments()
     final_config = vars(args)
-    configs_to_save = main(args)
+    try:
+        configs_to_save = main(args)
+    except BaseException as err:
+        print(f"Unexpected error occurred:\n {err}")
+        print(traceback.format_exc())
+        sys.exit(1)
     for k in configs_to_save.keys():
         final_config[k] = configs_to_save[k]
     np.save(f"{args.output_dir}/config.npy", final_config)
