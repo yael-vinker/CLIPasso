@@ -31,8 +31,8 @@ Now you should have a running container.
 Inside the container, clone the repository:
 
 ```bash
-git clone https://github.com/yael-vinker/CLIPSketch.git
-cd CLIPSketch/
+git clone https://github.com/yael-vinker/CLIPasso.git
+cd CLIPasso/
 ```
 Now you are all set and ready to move to the next stage (Run Demo).
 
@@ -40,8 +40,8 @@ Now you are all set and ready to move to the next stage (Run Demo).
 Note that it is recommended to use the provided docker image, as we rely on diffvg which has specific requirements and does not compile smoothly on every environment.
 1.  Clone the repo:
 ```bash
-git clone https://github.com/yael-vinker/CLIPSketch.git
-cd CLIPSketch
+git clone https://github.com/yael-vinker/CLIPasso.git
+cd CLIPasso
 ```
 2. Create a new environment and install the libraries:
 ```bash
