@@ -96,8 +96,12 @@ Sketching the flamingo with higher level of abstraction, using 8 strokes:
 python run_object_sketching.py --target_file "flamingo.png" --num_strokes 8
 ```
 
-## Citation
+## Related Work
+[CLIPDraw](https://arxiv.org/abs/2106.14843): Exploring Text-to-Drawing Synthesis through Language-Image Encoders, 2021 (Kevin Frans, L.B. Soros, Olaf Witkowski)
 
+[Diffvg](https://github.com/BachiLi/diffvg): Differentiable vector graphics rasterization for editing and learning, ACM Transactions on Graphics 2020 (Tzu-Mao Li, Michal Lukáč, Michaël Gharbi, Jonathan Ragan-Kelley)
+
+## Citation
 If you make use of our work, please cite our paper:
 
 ```
