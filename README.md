@@ -24,13 +24,14 @@ We combine the final and intermediate activations of a pre-trained CLIP model to
 ### Installation via Docker [Recommended]
 You can simply pull the docker image from docker hub, containing all the required libraries and packages:
 ```bash
-docker pull yaelvinker/yv_base_clip
-docker run --name clipsketch -it yaelvinker/yv_base_clip /bin/bash
+docker pull yaelvinker/clipasso_docker
+docker run --name clipsketch -it yaelvinker/clipasso_docker /bin/bash
 ```
 Now you should have a running container.
 Inside the container, clone the repository:
 
 ```bash
+cd /home
 git clone https://github.com/yael-vinker/CLIPasso.git
 cd CLIPasso/
 ```
@@ -45,7 +46,7 @@ cd CLIPasso
 ```
 2. Create a new environment and install the libraries:
 ```bash
-python3.6 -m venv clipsketch
+python3.7 -m venv clipsketch
 source clipsketch/bin/activate
 pip install -r requirements.txt
 pip install torch==1.7.1+cu101 torchvision==0.8.2+cu101 -f https://download.pytorch.org/whl/torch_stable.html
