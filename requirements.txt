@@ -1,6 +1,6 @@
 ftfy==6.0.3
 cssutils==2.3.0
-gdown==4.2.0
+gdown==4.4.0
 imageio==2.9.0
 imageio-ffmpeg==0.4.4
 importlib-metadata==4.6.4
