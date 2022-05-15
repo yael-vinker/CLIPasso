@@ -1,6 +1,6 @@
 
 import collections
-import clip
+import CLIP_.clip as clip
 import torch
 import torch.nn as nn
 from torchvision import models, transforms
@@ -24,11 +24,8 @@ class Loss(nn.Module):
 
         self.loss_mapper = \
             {
-                "l2": L2_(),
-                "lpips": LPIPS(device=args.device).to(args.device),
                 "clip": CLIPLoss(args),
-                "clip_conv_loss": CLIPConvLoss(args),
-                "clip_text": CLIPTextLoss(args)
+                "clip_conv_loss": CLIPConvLoss(args)
             }
 
     def get_losses_to_apply(self):
@@ -463,58 +460,4 @@ class CLIPConvLoss(torch.nn.Module):
         x4 = self.layer4(x3)
         y = self.att_pool2d(x4)
         return y, [x, x1, x2, x3, x4]
-
-
-class CLIPTextLoss(torch.nn.Module):
-    def __init__(self, args):
-        super(CLIPTextLoss, self).__init__()
-
-        self.args = args
-        self.model, clip_preprocess = clip.load(
-            'ViT-B/32', args.device, jit=False)
-        self.model.eval()
-        self.preprocess = transforms.Compose(
-            [clip_preprocess.transforms[-1]])  # clip normalisation
-        self.device = args.device
-        self.NUM_AUGS = args.num_aug_clip
-        augemntations = []
-        if "affine" in args.augemntations:
-            augemntations.append(transforms.RandomPerspective(
-                fill=0, p=1.0, distortion_scale=0.5))
-            augemntations.append(transforms.RandomResizedCrop(
-                224, scale=(0.8, 0.8), ratio=(1.0, 1.0)))
-        augemntations.append(
-            transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)))
-        self.augment_trans = transforms.Compose(augemntations)
-
-        self.include_target_in_aug = args.include_target_in_aug
-        self.counter = 0
-        self.augment_both = args.augment_both
-        self.text_target = args.text_target
-        text_input = clip.tokenize(self.text_target).to(self.device)
-        with torch.no_grad():
-            self.targets_features = self.model.encode_text(text_input)
-
-    def forward(self, sketches, targets, mode="train"):
-        if mode == "eval":
-            # for regular clip distance, no augmentations
-            with torch.no_grad():
-                sketches = self.preprocess(sketches).to(self.device)
-                sketches_features = self.model.encode_image(sketches)
-                return 1. - torch.cosine_similarity(sketches_features, self.targets_features)
-
-        loss_clip = 0
-        sketch_augs = []
-        for n in range(self.NUM_AUGS):
-            augmented_pair = self.augment_trans(torch.cat([sketches, targets]))
-            sketch_augs.append(augmented_pair[0].unsqueeze(0))
-
-        sketch_batch = torch.cat(sketch_augs)
-
-        sketch_features = self.model.encode_image(sketch_batch)
-
-        for n in range(self.NUM_AUGS):
-            loss_clip += (1. - torch.cosine_similarity(
-                sketch_features[n:n+1], self.targets_features, dim=1))
-        self.counter += 1
-        return loss_clip
+        
