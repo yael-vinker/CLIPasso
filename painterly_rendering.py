@@ -18,12 +18,13 @@ import torch.nn.functional as F
 import wandb
 from PIL import Image
 from torchvision import models, transforms
-from tqdm import tqdm
+from tqdm.auto import tqdm, trange
 
 import config
 import sketch_utils as utils
 from models.loss import Loss
 from models.painter_params import Painter, PainterOptimizer
+from IPython.display import display, SVG
 
 
 def load_renderer(args, target_im=None, mask=None):
@@ -83,8 +84,16 @@ def main(args):
     renderer.set_random_noise(0)
     img = renderer.init_image(stage=0)
     optimizer.init_optimizers()
+    
+    # not using tdqm for jupyter demo
+    if args.display:
+        epoch_range = range(args.num_iter)
+    else:
+        epoch_range = tqdm(range(args.num_iter))
 
-    for epoch in tqdm(range(args.num_iter)):
+    for epoch in epoch_range:
+        if not args.display:
+            epoch_range.refresh()
         renderer.set_random_noise(epoch)
         if args.lr_scheduler:
             optimizer.update_lr(counter)
@@ -164,7 +173,6 @@ def main(args):
         path_svg, args.use_wandb, args.device, best_iter, best_loss, "best total")
 
     return configs_to_save
-
 
 if __name__ == "__main__":
     args = config.parse_arguments()
