@@ -1,0 +1,54 @@
+# Configuration for Cog ⚙️
+# Reference: https://github.com/replicate/cog/blob/main/docs/yaml.md
+
+build:
+  # set to true if your model requires a GPU
+  gpu: true
+  cuda: "10.1"
+
+  # a list of ubuntu apt packages to install
+  system_packages:
+    #- "libopenmpi-dev"
+    - "libgl1-mesa-glx"
+    - "libglib2.0-0"
+    # - "cmake-"
+
+  # python version in the form '3.8' or '3.8.12'
+  python_version: "3.7.9"
+
+  # a list of packages in the format <package-name>==<version>
+  python_packages:
+  # cmake==3.21.2
+    # - "pip==21.2.2"
+    - "cmake==3.14.3"
+    - "torch==1.7.1"
+    - "torchvision==0.8.2"
+    - "numpy==1.19.2"
+    - "ipython==7.21.0"
+    - "Pillow==8.3.1"
+    - "svgwrite==1.4.1"
+    - "svgpathtools==1.4.1"
+    - "cssutils==2.3.0"
+    - "numba==0.55.1"
+    - "torch-tools==0.1.5"
+    - "visdom==0.1.8.9"
+    - "ftfy==6.1.1"
+    - "regex==2021.8.28"
+    - "tqdm==4.62.3"
+    - "scikit-image==0.18.3"
+    - "gdown==4.4.0"
+    - "wandb==0.12.0"
+    - "tensorflow-gpu==1.15.2"
+  
+  # commands run after the environment is setup
+  run:
+    # - /root/.pyenv/versions/3.7.9/bin/python3.7 -m pip install --upgrade pip
+    - export PYTHONPATH="/diffvg/build/lib.linux-x86_64-3.7"
+    - git clone https://github.com/BachiLi/diffvg && cd diffvg && git submodule update --init --recursive && CMAKE_PREFIX_PATH=$(pyenv prefix) DIFFVG_CUDA=1 python setup.py install
+    - pip install git+https://github.com/openai/CLIP.git --no-deps
+    - gdown "https://drive.google.com/uc?id=1ao1ovG1Qtx4b7EoskHXmi2E9rp5CHLcZ" -O "/src/U2Net_/saved_models/"
+    - "echo env is ready!"
+    - "echo another command if needed"
+
+# predict.py defines how predictions are run on your model
+predict: "predict.py:Predictor"

@@ -134,3 +134,10 @@ def parse_arguments():
     pydiffvg.set_use_gpu(torch.cuda.is_available() and args.use_gpu)
     pydiffvg.set_device(args.device)
     return args
+
+
+if __name__ == "__main__":
+    # for cog predict
+    args = parse_arguments()
+    final_config = vars(args)
+    np.save(f"{args.output_dir}/config_init.npy", final_config)
