@@ -32,6 +32,7 @@ def parse_arguments():
     parser.add_argument("--mask_object", type=int, default=0)
     parser.add_argument("--fix_scale", type=int, default=0)
     parser.add_argument("--display_logs", type=int, default=0)
+    parser.add_argument("--display", type=int, default=0)
 
     # =================================
     # ============ wandb ============

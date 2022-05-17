@@ -13,7 +13,7 @@ This is the official implementation of CLIPasso, a method for converting an imag
 <br>
 <br>
 
-![](repo_images/teaser.png?raw=true)
+![](repo_images/teaser2.png?raw=true)
 At a high level, we define a sketch as a set of Bézier curves and use a differentiable rasterizer ([diffvg](https://github.com/BachiLi/diffvg)) to optimize the parameters of the curves directly with respect to a CLIP-based perceptual loss. <br>
 We combine the final and intermediate activations of a pre-trained CLIP model to achieve both geometric and semantic simplifications.
 <br> The abstraction degree is controlled by varying the number of strokes.

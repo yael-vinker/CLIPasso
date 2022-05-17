@@ -9,12 +9,13 @@ import numpy as np
 import pydiffvg
 import torch
 from IPython.display import Image as Image_colab
-from IPython.display import display
+from IPython.display import display, SVG
 from PIL import Image
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--target_file", type=str,
                     help="target image file, located in <target_images>")
+parser.add_argument("--num_strokes", type=int)
 args = parser.parse_args()
 
 
@@ -50,14 +51,14 @@ abs_path = os.path.abspath(os.getcwd())
 target_path = f"{abs_path}/target_images/{args.target_file}"
 result_path = f"{abs_path}/output_sketches/{os.path.splitext(args.target_file)[0]}"
 svg_files = os.listdir(result_path)
-svg_files = [f for f in svg_files if "best.svg" in f]
+svg_files = [f for f in svg_files if "best.svg" in f and f"{args.num_strokes}strokes" in f]
 svg_output_path = f"{result_path}/{svg_files[0]}"
 sketch_res = read_svg(svg_output_path, multiply=True).cpu().numpy()
 sketch_res = Image.fromarray((sketch_res * 255).astype('uint8'), 'RGB')
 
-input_im = Image_colab(target_path)
+input_im = Image.open(target_path).resize((224,224))
 display(input_im)
-display(sketch_res)
+display(SVG(svg_output_path))
 
 p = re.compile("_best")
 best_sketch_dir = ""
