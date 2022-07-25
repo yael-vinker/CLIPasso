@@ -9,9 +9,11 @@ import skimage
 import skimage.io
 import torch
 import wandb
+import PIL
 from PIL import Image
 from torchvision import transforms
 from torchvision.utils import make_grid
+from skimage.transform import resize
 
 from U2Net_.model import U2NET
 
@@ -247,7 +249,10 @@ def fix_image_scale(im):
 
 
 def get_mask_u2net(args, pil_im):
+    w, h = pil_im.size[0], pil_im.size[1]
+    im_size = min(w, h)
     data_transforms = transforms.Compose([
+        transforms.Resize(min(320, im_size), interpolation=PIL.Image.BICUBIC),
         transforms.ToTensor(),
         transforms.Normalize(mean=(0.48145466, 0.4578275, 0.40821073), std=(
             0.26862954, 0.26130258, 0.27577711)),
@@ -259,7 +264,7 @@ def get_mask_u2net(args, pil_im):
     net = U2NET(3, 1)
     if torch.cuda.is_available() and args.use_gpu:
         net.load_state_dict(torch.load(model_dir))
-        net.cuda()
+        net.to(args.device)
     else:
         net.load_state_dict(torch.load(model_dir, map_location='cpu'))
     net.eval()
@@ -272,6 +277,10 @@ def get_mask_u2net(args, pil_im):
     predict[predict >= 0.5] = 1
     mask = torch.cat([predict, predict, predict], axis=0).permute(1, 2, 0)
     mask = mask.cpu().numpy()
+    mask = resize(mask, (h, w), anti_aliasing=False)
+    mask[mask < 0.5] = 0
+    mask[mask >= 0.5] = 1
+    
     # predict_np = predict.clone().cpu().data.numpy()
     im = Image.fromarray((mask[:, :, 0]*255).astype(np.uint8)).convert('RGB')
     im.save(f"{args.output_dir}/mask.png")
