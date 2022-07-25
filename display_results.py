@@ -48,11 +48,14 @@ def read_svg(path_svg, multiply=False):
 
 
 abs_path = os.path.abspath(os.getcwd())
-target_path = f"{abs_path}/target_images/{args.target_file}"
+
 result_path = f"{abs_path}/output_sketches/{os.path.splitext(args.target_file)[0]}"
 svg_files = os.listdir(result_path)
 svg_files = [f for f in svg_files if "best.svg" in f and f"{args.num_strokes}strokes" in f]
 svg_output_path = f"{result_path}/{svg_files[0]}"
+
+target_path = f"{svg_output_path[:-9]}/input.png"
+
 sketch_res = read_svg(svg_output_path, multiply=True).cpu().numpy()
 sketch_res = Image.fromarray((sketch_res * 255).astype('uint8'), 'RGB')
 
