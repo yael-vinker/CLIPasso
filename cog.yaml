@@ -4,7 +4,7 @@
 build:
   # set to true if your model requires a GPU
   gpu: true
-  cuda: "10.1"
+  cuda: "11.0"
 
   # a list of ubuntu apt packages to install
   system_packages:
